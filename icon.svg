@@ -1,0 +1,17 @@
+<!-- Vorlage für icon-192.png und icon-512.png.
+     Die PNGs werden von icons.ps1 nachgezeichnet – bei Änderungen hier
+     muss das Skript mitgeändert werden (kein SVG-Renderer auf dem Rechner). -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="110" fill="#3f7d4e"/>
+  <circle cx="256" cy="256" r="160" fill="none" stroke="#ffffff" stroke-width="27"/>
+  <g stroke="#ffffff" stroke-linecap="round">
+    <!-- Gabel: drei Zinken, Kopf, Stiel -->
+    <path d="M181 163v61M208 163v61M235 163v61" stroke-width="16"/>
+    <path d="M181 227h54" stroke-width="26"/>
+    <path d="M208 227v112" stroke-width="22"/>
+    <!-- Messer: Klinge und Griff -->
+    <path d="M310 176v83" stroke-width="27"/>
+    <path d="M310 266v70" stroke-width="16"/>
+  </g>
+  <circle cx="259" cy="355" r="16" fill="#dd8a2f"/>
+</svg>

@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>WasGegessen?</title>
+<meta name="description" content="Tägliche Nahrungsaufnahme erfassen und den Kalorienbedarf zum Gewichthalten ermitteln.">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#3f7d4e">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="WasGegessen?">
+<style>
+:root{
+  --bg:#f4f6f1; --karte:#ffffff; --rand:#e2e6dd; --text:#1f2621; --leise:#6d7a70;
+  --akzent:#3f7d4e; --akzent-hell:#e8f1e9; --warm:#dd8a2f; --rot:#c1483f; --blau:#3a6fa6;
+  --schatten:0 1px 3px rgba(20,32,24,.08), 0 6px 18px rgba(20,32,24,.05);
+  --r:16px; --r-klein:10px;
+  --eiweiss:#3a6fa6; --fett:#dd8a2f; --kh:#7a5fa8;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#141815; --karte:#1d221e; --rand:#2c332e; --text:#e7ece8; --leise:#94a199;
+    --akzent:#5aa86d; --akzent-hell:#1f2c23; --warm:#e0a057; --rot:#d9665c; --blau:#6a9dd0;
+    --schatten:0 1px 3px rgba(0,0,0,.35), 0 6px 18px rgba(0,0,0,.25);
+    --eiweiss:#6a9dd0; --fett:#e0a057; --kh:#a48ccd;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--text);
+  font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding-bottom:calc(72px + env(safe-area-inset-bottom));
+  overscroll-behavior-y:none;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+h1,h2,h3{margin:0;font-weight:650;letter-spacing:-.01em}
+.leise{color:var(--leise)}
+.klein{font-size:13px}
+
+/* ---------- Kopf ---------- */
+.kopf{
+  position:sticky; top:0; z-index:20; background:var(--bg);
+  padding:calc(10px + env(safe-area-inset-top)) 16px 10px;
+  border-bottom:1px solid transparent; transition:border-color .2s;
+}
+.kopf.scrollt{border-bottom-color:var(--rand)}
+/* Kopfinhalt auf dieselbe Breite wie der Hauptteil begrenzen,
+   sonst kleben die Datumspfeile am Fensterrand */
+.kopf-zeile,.datum-nav{max-width:640px;margin-left:auto;margin-right:auto}
+.kopf-zeile{display:flex;align-items:center;gap:10px}
+.kopf h1{font-size:19px;flex:1}
+.logo{width:26px;height:26px;flex:none}
+.datum-nav{display:flex;align-items:center;gap:4px;margin-top:8px}
+.datum-nav button{
+  width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
+  color:var(--leise);flex:none;font-size:20px;line-height:1;
+}
+.datum-nav button:hover{background:var(--karte)}
+.datum-nav button:disabled{opacity:.3;cursor:default}
+.datum-nav .datum{flex:1;text-align:center;font-weight:600;font-size:15px}
+.datum-nav .datum small{display:block;font-weight:400;font-size:12px;color:var(--leise)}
+
+main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
+
+/* ---------- Karten ---------- */
+.karte{
+  background:var(--karte); border:1px solid var(--rand); border-radius:var(--r);
+  box-shadow:var(--schatten); padding:16px; margin-bottom:14px;
+}
+.karte h2{font-size:15px;margin-bottom:12px}
+
+/* ---------- Tagesring ---------- */
+.ring-box{display:flex;align-items:center;gap:18px}
+.ring{width:132px;height:132px;flex:none;position:relative}
+.ring svg{transform:rotate(-90deg);display:block}
+.ring-track{fill:none;stroke:var(--rand);stroke-width:11}
+.ring-wert{fill:none;stroke:var(--akzent);stroke-width:11;stroke-linecap:round;transition:stroke-dashoffset .5s ease, stroke .3s}
+.ring.drueber .ring-wert{stroke:var(--rot)}
+.ring-mitte{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;
+}
+.ring-mitte b{font-size:27px;font-weight:700;line-height:1.05;font-variant-numeric:tabular-nums}
+.ring-mitte span{font-size:11.5px;color:var(--leise);margin-top:2px}
+.ring-fakten{flex:1;min-width:0;display:flex;flex-direction:column;gap:9px}
+.fakt{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.fakt b{font-variant-numeric:tabular-nums;font-weight:650}
+.fakt.rest b{color:var(--akzent);font-size:18px}
+.fakt.rest.drueber b{color:var(--rot)}
+
+/* ---------- Makro-Balken ---------- */
+.makros{display:flex;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--rand)}
+.makro{flex:1;min-width:0}
+/* Name über dem Wert: auf schmalen Geräten passt "188 / 231 g"
+   sonst nicht in eine Zeile und der Balken rutscht nach unten */
+.makro .kopfz{display:flex;flex-direction:column;gap:1px;font-size:12px;margin-bottom:5px}
+.makro .kopfz b{font-variant-numeric:tabular-nums;font-size:12.5px;white-space:nowrap}
+.makro .kopfz span{font-size:11px}
+.makro .bahn{height:5px;border-radius:3px;background:var(--rand);overflow:hidden}
+.makro .fuell{height:100%;border-radius:3px;width:0;transition:width .4s}
+.m-eiweiss .fuell{background:var(--eiweiss)} .m-eiweiss .kopfz span{color:var(--eiweiss)}
+.m-fett .fuell{background:var(--fett)} .m-fett .kopfz span{color:var(--fett)}
+.m-kh .fuell{background:var(--kh)} .m-kh .kopfz span{color:var(--kh)}
+
+/* ---------- Mahlzeiten ---------- */
+.mahlzeit{margin-bottom:14px}
+.mahlzeit-kopf{display:flex;align-items:center;gap:10px;padding:0 4px 8px}
+.mahlzeit-kopf h3{font-size:14px;flex:1;display:flex;align-items:center;gap:7px}
+.mahlzeit-kopf .icon{font-size:16px}
+.mahlzeit-kopf .summe{font-size:13px;color:var(--leise);font-variant-numeric:tabular-nums}
+.mahlzeit-kopf .plus{
+  width:28px;height:28px;border-radius:50%;background:var(--akzent-hell);color:var(--akzent);
+  display:grid;place-items:center;font-size:19px;line-height:1;font-weight:600;flex:none;
+}
+.eintraege{background:var(--karte);border:1px solid var(--rand);border-radius:var(--r);overflow:hidden;box-shadow:var(--schatten)}
+.eintrag{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--rand);width:100%;text-align:left}
+.eintrag:last-child{border-bottom:0}
+.eintrag:active{background:var(--akzent-hell)}
+.eintrag .txt{flex:1;min-width:0}
+.eintrag .name{font-size:14.5px;font-weight:550;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.eintrag .menge{font-size:12.5px;color:var(--leise);margin-top:1px}
+.eintrag .kcal{font-variant-numeric:tabular-nums;font-weight:600;font-size:14.5px;flex:none}
+.eintrag .kcal small{font-weight:400;color:var(--leise);font-size:11px}
+.leer{padding:14px;text-align:center;color:var(--leise);font-size:13.5px;background:var(--karte);border:1px dashed var(--rand);border-radius:var(--r)}
+
+/* ---------- Tabs unten ---------- */
+.tabs{
+  position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;
+  background:var(--karte);
+  border-top:1px solid var(--rand); padding-bottom:env(safe-area-inset-bottom);
+}
+.tabs button{
+  flex:1;padding:8px 4px 9px;display:flex;flex-direction:column;align-items:center;gap:3px;
+  color:var(--leise);font-size:10.5px;font-weight:550;
+}
+.tabs button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tabs button.aktiv{color:var(--akzent)}
+.tabs .tab-plus{flex:none;width:64px}
+.tabs .tab-plus .knubbel{
+  width:44px;height:44px;border-radius:50%;background:var(--akzent);color:#fff;
+  display:grid;place-items:center;box-shadow:0 3px 10px rgba(63,125,78,.35);margin-top:-14px;
+}
+.tabs .tab-plus .knubbel svg{width:24px;height:24px;stroke-width:2.3}
+
+/* ---------- Formulare ---------- */
+.feld{margin-bottom:13px}
+.feld label{display:block;font-size:13px;color:var(--leise);margin-bottom:5px;font-weight:550}
+.feld input,.feld select,.feld textarea{
+  width:100%;padding:11px 12px;border:1px solid var(--rand);border-radius:var(--r-klein);
+  background:var(--bg);outline:none;
+}
+.feld input:focus,.feld select:focus,.feld textarea:focus{border-color:var(--akzent)}
+.feld input[readonly]{color:var(--leise)}
+.feld-reihe{display:flex;gap:10px}
+.feld-reihe>*{flex:1;min-width:0}
+.knopf{
+  display:block;width:100%;padding:13px;border-radius:var(--r-klein);
+  background:var(--akzent);color:#fff;font-weight:600;text-align:center;
+}
+.knopf:disabled{opacity:.45}
+.knopf.zweit{background:var(--bg);color:var(--text);border:1px solid var(--rand)}
+.knopf.gefahr{background:transparent;color:var(--rot);border:1px solid var(--rand)}
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.chip{
+  padding:7px 13px;border-radius:999px;border:1px solid var(--rand);
+  background:var(--bg);font-size:13.5px;font-weight:550;
+}
+.chip.aktiv{background:var(--akzent);color:#fff;border-color:var(--akzent)}
+
+/* ---------- Overlays ---------- */
+.overlay{
+  position:fixed;inset:0;z-index:50;background:var(--bg);
+  display:flex;flex-direction:column;
+  transform:translateY(100%);transition:transform .26s cubic-bezier(.3,.8,.4,1);
+}
+.overlay.auf{transform:none}
+.ov-kopf{
+  display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;
+  border-bottom:1px solid var(--rand);background:var(--karte);flex:none;
+}
+.ov-kopf h2{font-size:16px;flex:1;text-align:center;padding:0 4px}
+.ov-kopf button{padding:8px 10px;color:var(--akzent);font-weight:600;font-size:14.5px;border-radius:8px}
+.ov-kopf button.zurueck{font-size:22px;line-height:1;padding:4px 10px;color:var(--text)}
+.ov-inhalt{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px;max-width:640px;margin:0 auto;width:100%}
+
+/* ---------- Suche ---------- */
+.suchleiste{padding:10px 12px;background:var(--karte);border-bottom:1px solid var(--rand);flex:none}
+.suchleiste input{
+  width:100%;padding:11px 14px;border-radius:999px;border:1px solid var(--rand);
+  background:var(--bg);outline:none;
+}
+.suchleiste input:focus{border-color:var(--akzent)}
+.reiter{display:flex;gap:4px;padding:8px 12px 10px;background:var(--karte);border-bottom:1px solid var(--rand);flex:none;overflow-x:auto}
+.reiter button{
+  padding:7px 14px;border-radius:999px;font-size:13.5px;font-weight:600;
+  color:var(--leise);white-space:nowrap;
+}
+.reiter button.aktiv{background:var(--akzent-hell);color:var(--akzent)}
+.treffer{list-style:none;margin:0;padding:0}
+.treffer li{border-bottom:1px solid var(--rand)}
+.treffer button{display:flex;width:100%;align-items:center;gap:12px;padding:12px 4px;text-align:left}
+.treffer .bild{width:42px;height:42px;border-radius:9px;object-fit:cover;background:var(--rand);flex:none}
+.treffer .txt{flex:1;min-width:0}
+.treffer .name{font-size:14.5px;font-weight:550;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.treffer .sub{font-size:12.5px;color:var(--leise);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px}
+.treffer .kcal{font-size:13px;font-variant-numeric:tabular-nums;color:var(--leise);flex:none;text-align:right}
+.hinweis{padding:26px 16px;text-align:center;color:var(--leise);font-size:14px}
+.spinner{
+  width:22px;height:22px;border:2.5px solid var(--rand);border-top-color:var(--akzent);
+  border-radius:50%;animation:dreh .8s linear infinite;margin:0 auto 10px;
+}
+@keyframes dreh{to{transform:rotate(360deg)}}
+
+/* ---------- Detail ---------- */
+.detail-kopf{text-align:center;margin-bottom:18px}
+.detail-kopf .name{font-size:18px;font-weight:650}
+.detail-kopf .marke{font-size:13.5px;color:var(--leise);margin-top:3px}
+.kcal-vorschau{
+  text-align:center;padding:18px;background:var(--akzent-hell);border-radius:var(--r);margin-bottom:18px;
+}
+.kcal-vorschau b{font-size:34px;font-weight:700;color:var(--akzent);font-variant-numeric:tabular-nums;display:block;line-height:1.1}
+.kcal-vorschau span{font-size:13px;color:var(--leise)}
+.kcal-vorschau .mk{display:flex;justify-content:center;gap:14px;margin-top:10px;font-size:12.5px;color:var(--leise)}
+.naehr-tabelle{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:6px}
+.naehr-tabelle td{padding:7px 0;border-bottom:1px solid var(--rand)}
+.naehr-tabelle td:last-child{text-align:right;font-variant-numeric:tabular-nums;font-weight:550}
+.naehr-tabelle tr:last-child td{border-bottom:0}
+
+/* ---------- Verlauf ---------- */
+.diagramm{display:flex;align-items:flex-end;gap:3px;height:150px;margin:6px 0 4px;position:relative}
+.balken-sp{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:4px}
+.balken{width:100%;border-radius:4px 4px 2px 2px;background:var(--akzent);min-height:2px;transition:height .3s}
+.balken.drueber{background:var(--rot)}
+.balken.leer-tag{background:var(--rand)}
+.balken-sp .bl{font-size:9.5px;color:var(--leise);text-align:center;white-space:nowrap;overflow:hidden}
+.ziel-linie{position:relative;height:0;z-index:2}
+.ziel-linie i{position:absolute;left:0;right:0;border-top:1.5px dashed var(--leise);opacity:.55}
+.ziel-linie b{
+  position:absolute;right:0;font-size:10px;color:var(--leise);font-style:normal;font-weight:600;
+  background:var(--karte);padding:0 4px;transform:translateY(-50%);
+}
+.stat-reihe{display:flex;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--rand)}
+.stat{flex:1;text-align:center}
+.stat b{display:block;font-size:18px;font-variant-numeric:tabular-nums;font-weight:650}
+.stat span{font-size:11.5px;color:var(--leise)}
+.prot-tag{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--rand);width:100%;text-align:left}
+.prot-tag:last-child{border-bottom:0}
+.prot-tag .txt{flex:1;min-width:0}
+.prot-tag .name{font-size:14px;font-weight:550}
+.prot-tag .sub{font-size:12px;color:var(--leise);margin-top:1px}
+.prot-tag .kcal{font-variant-numeric:tabular-nums;font-weight:600;font-size:14px}
+
+/* ---------- Profil ---------- */
+.bedarf-box{
+  text-align:center;padding:20px 16px;border-radius:var(--r);color:#fff;margin-bottom:14px;
+  background:linear-gradient(140deg,var(--akzent),var(--blau));
+}
+.bedarf-box .zahl{font-size:38px;font-weight:700;line-height:1.05;font-variant-numeric:tabular-nums}
+.bedarf-box .zahl small{font-size:15px;font-weight:500;opacity:.85}
+.bedarf-box p{margin:6px 0 0;font-size:13.5px;opacity:.92}
+.bedarf-box .aufteilung{display:flex;gap:12px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.25);font-size:11.5px}
+.bedarf-box .aufteilung div{flex:1;opacity:.92}
+.bedarf-box .aufteilung b{display:block;font-size:15px;font-variant-numeric:tabular-nums;opacity:1}
+.akkordeon{border-top:1px solid var(--rand);padding-top:12px;margin-top:12px}
+.akkordeon summary{font-size:14px;font-weight:600;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px}
+.akkordeon summary::-webkit-details-marker{display:none}
+.akkordeon summary::before{content:"\203A";display:inline-block;transition:transform .2s;font-size:18px;color:var(--leise)}
+.akkordeon[open] summary::before{transform:rotate(90deg)}
+.akkordeon .inhalt{padding-top:14px}
+
+/* ---------- Foto ---------- */
+.foto-feld{
+  border:2px dashed var(--rand);border-radius:var(--r);padding:30px 16px;text-align:center;
+  color:var(--leise);font-size:14px;width:100%;
+}
+.foto-feld svg{width:38px;height:38px;stroke:currentColor;fill:none;stroke-width:1.5;margin-bottom:8px;stroke-linecap:round;stroke-linejoin:round}
+.foto-vorschau{width:100%;border-radius:var(--r);display:block;margin-bottom:14px;max-height:260px;object-fit:cover}
+.vorschlag{
+  display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--rand);
+  border-radius:var(--r-klein);margin-bottom:9px;background:var(--karte);width:100%;text-align:left;
+}
+.vorschlag .txt{flex:1;min-width:0}
+.vorschlag .name{font-weight:600;font-size:14.5px}
+.vorschlag .sub{font-size:12.5px;color:var(--leise);margin-top:2px}
+.vorschlag .kcal{font-variant-numeric:tabular-nums;font-weight:650;flex:none}
+.stretch-fahne{
+  display:inline-block;padding:3px 9px;border-radius:999px;background:var(--warm);color:#fff;
+  font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;vertical-align:middle;
+}
+.warnung{
+  background:var(--karte);
+  border:1px solid var(--warm);
+  border-radius:var(--r-klein);padding:11px 13px;font-size:13px;line-height:1.4;margin-bottom:14px;
+}
+
+/* ---------- Toast ---------- */
+#toast{
+  position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translate(-50%,14px);
+  background:var(--text);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:14px;
+  font-weight:550;z-index:80;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
+  box-shadow:0 4px 16px rgba(0,0,0,.2);max-width:88vw;text-align:center;
+}
+#toast.an{opacity:1;transform:translate(-50%,0)}
+[hidden]{display:none !important}
+</style>
+</head>
+<body>
+
+<header class="kopf" id="kopf">
+  <div class="kopf-zeile">
+    <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
+      <circle cx="32" cy="32" r="20" fill="none" stroke="var(--akzent)" stroke-width="3.4"/>
+      <g stroke="var(--akzent)" stroke-linecap="round">
+        <path d="M22.6 20.4v7.6M26 20.4v7.6M29.4 20.4v7.6" stroke-width="2"/>
+        <path d="M22.6 28.4h6.8" stroke-width="3.2"/>
+        <path d="M26 28.4v14" stroke-width="2.8"/>
+        <path d="M38.8 22v10.4" stroke-width="3.4"/>
+        <path d="M38.8 33.4v8.6" stroke-width="2"/>
+      </g>
+      <circle cx="32.4" cy="44.4" r="2" fill="var(--warm)"/>
+    </svg>
+    <h1>WasGegessen?</h1>
+  </div>
+  <div class="datum-nav" id="datum-nav">
+    <button id="tag-zurueck" aria-label="Tag zurück">&lsaquo;</button>
+    <div class="datum"><span id="datum-text">Heute</span><small id="datum-sub"></small></div>
+    <button id="tag-vor" aria-label="Tag vor">&rsaquo;</button>
+  </div>
+</header>
+
+<main>
+  <!-- ===== HEUTE ===== -->
+  <section id="s-heute">
+    <div class="karte">
+      <div class="ring-box">
+        <div class="ring" id="ring">
+          <svg width="132" height="132" viewBox="0 0 132 132">
+            <circle class="ring-track" cx="66" cy="66" r="55"/>
+            <circle class="ring-wert" id="ring-wert" cx="66" cy="66" r="55"
+                    stroke-dasharray="345.6" stroke-dashoffset="345.6"/>
+          </svg>
+          <div class="ring-mitte">
+            <b id="ring-zahl">0</b>
+            <span id="ring-label">kcal gegessen</span>
+          </div>
+        </div>
+        <div class="ring-fakten">
+          <div class="fakt"><span class="leise klein">Ziel</span><b id="f-ziel">&ndash;</b></div>
+          <div class="fakt"><span class="leise klein">Gegessen</span><b id="f-gegessen">0</b></div>
+          <div class="fakt rest" id="f-rest-zeile"><span class="leise klein">Übrig</span><b id="f-rest">&ndash;</b></div>
+        </div>
+      </div>
+      <div class="makros">
+        <div class="makro m-eiweiss"><div class="kopfz"><span>Eiweiß</span><b id="mk-eiweiss">0 g</b></div><div class="bahn"><div class="fuell" id="mkb-eiweiss"></div></div></div>
+        <div class="makro m-fett"><div class="kopfz"><span>Fett</span><b id="mk-fett">0 g</b></div><div class="bahn"><div class="fuell" id="mkb-fett"></div></div></div>
+        <div class="makro m-kh"><div class="kopfz"><span>Kohlenhydrate</span><b id="mk-kh">0 g</b></div><div class="bahn"><div class="fuell" id="mkb-kh"></div></div></div>
+      </div>
+    </div>
+    <div id="mahlzeiten"></div>
+  </section>
+
+  <!-- ===== VERLAUF ===== -->
+  <section id="s-verlauf" hidden>
+    <div class="chips" id="zeitraum-chips" style="margin-bottom:14px">
+      <button class="chip aktiv" data-zeitraum="woche">Woche</button>
+      <button class="chip" data-zeitraum="monat">Monat</button>
+      <button class="chip" data-zeitraum="jahr">Jahr</button>
+    </div>
+    <div class="karte">
+      <h2 id="verlauf-titel">Letzte 7 Tage</h2>
+      <div class="ziel-linie" id="ziel-linie" hidden><i></i><b>Ziel</b></div>
+      <div class="diagramm" id="diagramm"></div>
+      <div class="stat-reihe">
+        <div class="stat"><b id="st-schnitt">&ndash;</b><span>Ø kcal/Tag</span></div>
+        <div class="stat"><b id="st-tage">&ndash;</b><span>Tage erfasst</span></div>
+        <div class="stat"><b id="st-bilanz">&ndash;</b><span>Ø zum Ziel</span></div>
+      </div>
+    </div>
+    <div class="karte">
+      <h2>Protokoll</h2>
+      <div id="protokoll"></div>
+    </div>
+  </section>
+
+  <!-- ===== PROFIL ===== -->
+  <section id="s-profil" hidden>
+    <div class="bedarf-box">
+      <div class="zahl" id="tdee-zahl">&ndash;<small> kcal</small></div>
+      <p id="bedarf-text">Fülle dein Profil aus, um deinen Bedarf zu berechnen.</p>
+      <div class="aufteilung" id="bedarf-auf" hidden>
+        <div><b id="bmr-zahl">&ndash;</b>Grundumsatz</div>
+        <div><b id="fakt-zahl">&ndash;</b>Aktivitätsfaktor</div>
+        <div><b id="ziel-zahl">&ndash;</b>Tagesziel</div>
+      </div>
+    </div>
+
+    <div class="karte">
+      <h2>Deine Angaben</h2>
+      <div class="feld">
+        <label>Geschlecht</label>
+        <div class="chips" id="geschlecht-chips">
+          <button class="chip" data-geschlecht="w">weiblich</button>
+          <button class="chip" data-geschlecht="m">männlich</button>
+        </div>
+      </div>
+      <div class="feld-reihe">
+        <div class="feld"><label for="p-groesse">Größe (cm)</label><input id="p-groesse" type="text" inputmode="numeric" placeholder="175"></div>
+        <div class="feld"><label for="p-gewicht">Gewicht (kg)</label><input id="p-gewicht" type="text" inputmode="decimal" placeholder="70"></div>
+        <div class="feld"><label for="p-alter">Alter</label><input id="p-alter" type="text" inputmode="numeric" placeholder="30"></div>
+      </div>
+      <div class="feld">
+        <label for="p-aktivitaet">Aktivitätslevel</label>
+        <select id="p-aktivitaet"></select>
+        <p class="klein leise" id="aktivitaet-hilfe" style="margin:6px 2px 0"></p>
+      </div>
+      <details class="akkordeon">
+        <summary>Tagesziel selbst festlegen</summary>
+        <div class="inhalt">
+          <p class="klein leise" style="margin-top:0">Standard ist dein berechneter Gesamtumsatz &ndash; das ist der Wert zum Gewichthalten. Ein eigener Wert überschreibt ihn.</p>
+          <div class="feld"><label for="p-ziel">Eigenes Tagesziel (kcal)</label><input id="p-ziel" type="text" inputmode="numeric" placeholder="automatisch"></div>
+        </div>
+      </details>
+    </div>
+
+    <div class="karte">
+      <h2>Eigene Lebensmittel</h2>
+      <div id="eigene-liste"></div>
+      <button class="knopf zweit" id="neu-eigen" style="margin-top:10px">+ Neues Lebensmittel anlegen</button>
+    </div>
+
+    <div class="karte">
+      <h2>Bilderkennung <span class="stretch-fahne">Optional</span></h2>
+      <p class="klein leise" style="margin-top:-6px">
+        Fotos werden von Claude analysiert. Dafür brauchst du einen eigenen API-Schlüssel von
+        console.anthropic.com &ndash; er bleibt auf diesem Gerät und wird nur an die Anthropic-API geschickt.
+        Ohne Schlüssel bleibt die Funktion deaktiviert; alles andere funktioniert ohne.
+      </p>
+      <div class="feld" style="margin-top:12px">
+        <label for="p-key">API-Schlüssel</label>
+        <input id="p-key" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+      </div>
+      <div class="feld">
+        <label for="p-modell">Modell</label>
+        <select id="p-modell">
+          <option value="claude-opus-5">Claude Opus 5 (genauer)</option>
+          <option value="claude-sonnet-5">Claude Sonnet 5 (günstiger)</option>
+        </select>
+      </div>
+      <p class="klein leise" id="key-status" style="margin:0 2px"></p>
+    </div>
+
+    <div class="karte">
+      <h2>Daten</h2>
+      <button class="knopf zweit" id="export-csv">Alle Einträge als CSV exportieren</button>
+      <button class="knopf gefahr" id="alles-loeschen" style="margin-top:10px">Alle Daten löschen</button>
+      <p class="klein leise" style="margin:12px 2px 0">
+        Alles wird nur auf diesem Gerät gespeichert &ndash; kein Konto, kein Server.
+      </p>
+    </div>
+    <p class="klein leise" style="text-align:center;margin:18px 0 4px">WasGegessen? <span id="version"></span></p>
+  </section>
+</main>
+
+<!-- ===== Tableiste ===== -->
+<nav class="tabs">
+  <button data-screen="heute" class="aktiv">
+    <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/><path d="M9.5 20v-6h5v6"/></svg>
+    Heute
+  </button>
+  <button data-screen="verlauf">
+    <svg viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M6.5 19v-7"/><path d="M11.5 19V6"/><path d="M16.5 19v-4.5"/></svg>
+    Verlauf
+  </button>
+  <button class="tab-plus" id="tab-plus" aria-label="Eintrag hinzufügen">
+    <span class="knubbel"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>
+  </button>
+  <button data-screen="profil">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M4.8 20c.6-3.8 3.6-5.8 7.2-5.8s6.6 2 7.2 5.8"/></svg>
+    Profil
+  </button>
+  <button class="tab-luecke" style="visibility:hidden;flex:1" tabindex="-1" aria-hidden="true"></button>
+</nav>
+
+<!-- ===== Overlay: Suche ===== -->
+<div class="overlay" id="ov-suche">
+  <div class="ov-kopf">
+    <button class="zurueck" data-schliessen="ov-suche" aria-label="Zurück">&lsaquo;</button>
+    <h2>Was hast du gegessen?</h2>
+    <button data-schliessen="ov-suche">Fertig</button>
+  </div>
+  <div class="suchleiste">
+    <input id="such-feld" type="search" placeholder="Lebensmittel oder Gericht suchen…" autocomplete="off" enterkeyhint="search">
+  </div>
+  <div class="reiter" id="such-reiter">
+    <button class="aktiv" data-quelle="suche">Suche</button>
+    <button data-quelle="zuletzt">Zuletzt</button>
+    <button data-quelle="eigene">Eigene</button>
+    <button data-quelle="foto">Foto</button>
+  </div>
+  <div class="ov-inhalt" id="such-inhalt"></div>
+</div>
+
+<!-- ===== Overlay: Detail ===== -->
+<div class="overlay" id="ov-detail">
+  <div class="ov-kopf">
+    <button class="zurueck" data-schliessen="ov-detail" aria-label="Zurück">&lsaquo;</button>
+    <h2 id="detail-titel">Eintragen</h2>
+    <button id="detail-speichern">Speichern</button>
+  </div>
+  <div class="ov-inhalt">
+    <div class="detail-kopf">
+      <div class="name" id="d-name">&ndash;</div>
+      <div class="marke" id="d-marke"></div>
+    </div>
+    <div class="kcal-vorschau">
+      <b id="d-kcal">0</b>
+      <span>kcal</span>
+      <div class="mk" id="d-makros"></div>
+    </div>
+    <div class="feld">
+      <label>Eingabemodus</label>
+      <div class="chips" id="modus-chips">
+        <button class="chip aktiv" data-modus="menge">Menge</button>
+        <button class="chip" data-modus="portion">Standardportion</button>
+      </div>
+    </div>
+    <div class="feld" id="feld-menge">
+      <label for="d-menge" id="menge-label">Menge in Gramm</label>
+      <div class="feld-reihe">
+        <input id="d-menge" type="text" inputmode="decimal" value="100">
+        <select id="d-einheit" style="max-width:120px">
+          <option value="g">Gramm</option>
+          <option value="ml">Milliliter</option>
+        </select>
+      </div>
+    </div>
+    <div class="feld" id="feld-portion" hidden>
+      <label for="d-portion">Portion</label>
+      <select id="d-portion"></select>
+      <div class="feld-reihe" style="margin-top:10px">
+        <div class="feld" style="margin:0"><label for="d-anzahl">Anzahl</label><input id="d-anzahl" type="text" inputmode="decimal" value="1"></div>
+        <div class="feld" style="margin:0"><label for="d-portion-gramm">entspricht</label><input id="d-portion-gramm" type="text" readonly tabindex="-1"></div>
+      </div>
+    </div>
+    <div class="feld">
+      <label>Mahlzeit</label>
+      <div class="chips" id="mahlzeit-chips"></div>
+    </div>
+    <details class="akkordeon">
+      <summary>Nährwerte je 100 <span id="d-basis-einheit">g</span></summary>
+      <div class="inhalt">
+        <table class="naehr-tabelle" id="d-naehr"></table>
+      </div>
+    </details>
+    <button class="knopf gefahr" id="d-loeschen" hidden style="margin-top:18px">Eintrag löschen</button>
+  </div>
+</div>
+
+<!-- ===== Overlay: Eigenes Lebensmittel ===== -->
+<div class="overlay" id="ov-eigen">
+  <div class="ov-kopf">
+    <button class="zurueck" data-schliessen="ov-eigen" aria-label="Zurück">&lsaquo;</button>
+    <h2 id="eigen-titel">Eigenes Lebensmittel</h2>
+    <button id="eigen-speichern">Sichern</button>
+  </div>
+  <div class="ov-inhalt">
+    <p class="klein leise" style="margin-top:0">
+      Für eigene Gerichte: gib die Nährwerte je 100 g bzw. 100 ml an. Steht auf der Packung
+      nur der Wert je Portion, rechne ihn einmal um &ndash; danach kannst du jede Menge eintragen.
+    </p>
+    <div class="feld"><label for="e-name">Name</label><input id="e-name" type="text" placeholder="z. B. Omas Lasagne"></div>
+    <div class="feld">
+      <label>Art</label>
+      <div class="chips" id="e-art-chips">
+        <button class="chip aktiv" data-art="fest">fest (Gramm)</button>
+        <button class="chip" data-art="fluessig">flüssig (Milliliter)</button>
+      </div>
+    </div>
+    <div class="feld"><label for="e-kcal">Kalorien je 100 <span class="e-einheit">g</span></label><input id="e-kcal" type="text" inputmode="decimal" placeholder="180"></div>
+    <div class="feld-reihe">
+      <div class="feld"><label for="e-eiweiss">Eiweiß (g)</label><input id="e-eiweiss" type="text" inputmode="decimal" placeholder="0"></div>
+      <div class="feld"><label for="e-fett">Fett (g)</label><input id="e-fett" type="text" inputmode="decimal" placeholder="0"></div>
+      <div class="feld"><label for="e-kh">Kohlenh. (g)</label><input id="e-kh" type="text" inputmode="decimal" placeholder="0"></div>
+    </div>
+    <div class="feld">
+      <label>Eigene Portionen <span class="leise klein">(optional)</span></label>
+      <div id="e-portionen"></div>
+      <button class="knopf zweit" id="e-portion-plus" style="margin-top:8px">+ Portion hinzufügen</button>
+    </div>
+    <button class="knopf gefahr" id="e-loeschen" hidden style="margin-top:18px">Lebensmittel löschen</button>
+  </div>
+</div>
+
+<!-- ===== Overlay: Foto ===== -->
+<div class="overlay" id="ov-foto">
+  <div class="ov-kopf">
+    <button class="zurueck" data-schliessen="ov-foto" aria-label="Zurück">&lsaquo;</button>
+    <h2>Foto erkennen</h2>
+    <button data-schliessen="ov-foto">Fertig</button>
+  </div>
+  <div class="ov-inhalt" id="foto-inhalt"></div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="foto-input" accept="image/*" hidden>
+
+<!-- Die Versionsnummer an den Skripten erzwingt frische Dateien nach einem Update.
+     Bei einer neuen Version hier, in APP_VERSION (app.js) und in den ASSETS
+     des Service Workers dieselbe Nummer eintragen. -->
+<script src="daten.js?v=1.0"></script>
+<script src="off.js?v=1.0"></script>
+<script src="vision.js?v=1.0"></script>
+<script src="app.js?v=1.0"></script>
+</body>
+</html>
