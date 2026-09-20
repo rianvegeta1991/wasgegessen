@@ -11,8 +11,12 @@ auf deinem Gerät und verlassen es nicht.
 ## Was die App kann
 
 ### Essen eintragen
-- **Suche** in der Lebensmitteldatenbank von [Open Food Facts](https://world.openfoodfacts.org/)
-  (über 3 Millionen Produkte, auch deutsche Marken)
+- **Rund 190 Grundnahrungsmittel sind fest eingebaut** – Kartoffeln, Butter, Eier, Reis,
+  Nudeln, Brot, Gemüse, Obst, Fleisch, Käse und so weiter, mit Durchschnittswerten und
+  passenden Portionen. Sie stehen sofort da, auch offline, und lassen sich über die
+  Gruppen im Suchfenster durchstöbern.
+- **Suche** zusätzlich in der Lebensmitteldatenbank von
+  [Open Food Facts](https://world.openfoodfacts.org/) für verpackte Markenprodukte
 - **Zwei Eingabearten** je Eintrag, frei wählbar:
   - **Menge** in Gramm bzw. Millilitern
   - **Standardportion** wie „1 Scheibe Brot", „1 Tasse Reis", „1 Apfel" – das
@@ -68,6 +72,7 @@ Dann http://localhost:8796 aufrufen.
 |---|---|
 | `index.html` | Markup und das komplette CSS |
 | `daten.js` | Aktivitätsstufen, Mahlzeiten, Standardportionen, Bedarfsformeln |
+| `grundnahrung.js` | die eingebauten Grundnahrungsmittel samt Suche |
 | `off.js` | Anbindung an Open Food Facts |
 | `vision.js` | Bilderkennung über die Anthropic-API |
 | `app.js` | Oberfläche, Zustand, Speicherung |
@@ -78,7 +83,10 @@ Gespeichert wird im `localStorage` unter `wasgegessen-*`.
 
 ## Datenquellen
 
-- Nährwerte: [Open Food Facts](https://world.openfoodfacts.org/), Open Database License
+- Grundnahrungsmittel: übliche Durchschnittswerte für unverarbeitete Lebensmittel,
+  gepflegt in `grundnahrung.js`. Kohlenhydrate ohne Ballaststoffe, wie auf deutschen
+  Packungen.
+- Markenprodukte: [Open Food Facts](https://world.openfoodfacts.org/), Open Database License
 - Standardportionen: übliche Durchschnittsgewichte, in `daten.js` hinterlegt
 
 ## Was noch fehlt

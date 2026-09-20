@@ -19,7 +19,7 @@ Update die minor-Zahl um 1 erhöhen** – als ganze Zahl weiterzählen, nach 1.9
 
 **Drei Stellen hängen an der Versionsnummer und müssen zusammen geändert werden:**
 1. `APP_VERSION` in `app.js`
-2. `?v=1.0` an den vier Skript-Tags in `index.html`
+2. `?v=` an den fünf Skript-Tags in `index.html`
 3. dieselben `?v=`-Werte in der `ASSETS`-Liste von `sw.js` **plus** `CACHE` hochzählen
 
 Ohne Schritt 2 behalten Besucher nach einem Update alte JavaScript-Dateien (GitHub
@@ -28,13 +28,14 @@ werden trotzdem aus dem Netz geholt.
 
 ## Aufbau
 
-Kein Node, kein Build. Eine HTML-Datei plus vier Skripte, alle global (kein Modulsystem);
+Kein Node, kein Build. Eine HTML-Datei plus fünf Skripte, alle global (kein Modulsystem);
 nur `app.js` steckt in einer IIFE.
 
 | Datei | Inhalt |
 |---|---|
 | `index.html` | Markup + komplettes CSS |
 | `daten.js` | `AKTIVITAET`, `MAHLZEITEN`, Portionsregeln, `berechneBMR`/`berechneTDEE` |
+| `grundnahrung.js` | `GRUNDNAHRUNG` (rund 190 Einträge) + `grundnahrungSuche` |
 | `off.js` | Open Food Facts: `offSuche`, Umwandlung ins App-Format |
 | `vision.js` | Bilderkennung über die Anthropic-API |
 | `app.js` | Oberfläche, Zustand, `localStorage` |
@@ -56,9 +57,38 @@ Gesamtumsatz = Grundumsatz × Faktor (1,2 / 1,375 / 1,55 / 1,725 / 1,9).
 Makro-Richtwerte: 20 % Eiweiß, 30 % Fett, 50 % Kohlenhydrate (4/9/4 kcal je Gramm).
 
 ### Portionen
-`portionenFuer(name, fluessig)` sucht Stichwörter im Namen (`PORTIONS_REGELN`) und hängt
-allgemeine Portionen hinten an. Im Eintragsfenster kommen zuerst die mitgelieferten
-Portionen (Packungsangabe bzw. selbst angelegte), dann die Standardportionen.
+`portionenFuer(name, fluessig, nurAllgemein)` sucht Stichwörter im Namen
+(`PORTIONS_REGELN`) und hängt allgemeine Portionen hinten an. Im Eintragsfenster stehen
+zuerst die mitgelieferten Portionen (Packungsangabe, selbst angelegte oder die aus
+`grundnahrung.js`). Bringt ein Lebensmittel eigene Portionen mit, kommen **nur noch die
+allgemeinen** dazu (`nurAllgemein`) – sonst stünde neben „1 mittelgroße Kartoffel – 100 g"
+auch noch die Stichwortregel „1 mittelgroße – 150 g".
+
+## Woher die Lebensmittel kommen
+
+Zwei Quellen, bewusst getrennt (seit v1.1):
+
+1. **`grundnahrung.js`** – rund 190 Grundnahrungsmittel fest in der App. Das ist die
+   **wichtigere** Quelle: sie ist sofort da, funktioniert offline und überlebt jeden
+   Ausfall von Open Food Facts. Nährwerte je 100 g nach europäischer Kennzeichnung
+   (**Kohlenhydrate ohne Ballaststoffe**), dazu `alias` für Plural und Synonyme sowie
+   eigene `portionen`.
+2. **Open Food Facts** – nur noch für verpackte Markenware.
+
+`sucheStarten` zeigt beides getrennt an: Grundnahrungsmittel und eigene Einträge
+erscheinen **sofort**, die Markenprodukte werden nachgeladen. Fällt Open Food Facts aus,
+steht dort nur eine beiläufige Notiz – die Suche bleibt benutzbar. Ohne Suchbegriff
+zeigt `renderStoebern` die Gruppen zum Durchblättern.
+
+**Neue Einträge prüfen:** `kcal` sollte ungefähr `4×Eiweiß + 4×KH + 9×Fett` ergeben.
+In der Konsole:
+
+```js
+GRUNDNAHRUNG.filter(l => Math.abs(l.kcal - (4*l.eiweiss + 4*l.kh + 9*l.fett)) / Math.max(l.kcal,20) > 0.25)
+```
+
+Erlaubte Ausreißer sind nur Alkoholisches (Alkohol hat 7 kcal/g und steht in keinem
+Makro) und sehr Ballaststoffreiches (Rosenkohl, Himbeeren, Aubergine, Zitrone).
 
 ## Fallstricke (aus Erfahrung)
 
@@ -74,9 +104,23 @@ Portionen (Packungsangabe bzw. selbst angelegte), dann die Standardportionen.
   aus (503). Deshalb 600 ms Verzögerung beim Tippen, `SUCH_CACHE` für wiederholte
   Begriffe, `AbortController` beim Weitertippen und immer der Ausweg „Selbst anlegen".
   Ein Netzwerkfehler kommt im Browser als `Failed to fetch` an, nicht als Status.
-- **Der Browser cacht hartnäckig.** `serve.ps1` schickt `Cache-Control: no-store`, der
-  Vorschau-Browser ignoriert das beim HTML trotzdem. Beim Testen einer Änderung hilft
-  nur ein **frischer Tab**; der Server horcht dafür auch auf `127.0.0.1` (eigener Cache).
+- **Beim Testen cacht der eigene Service Worker.** Das war die wahre Ursache hinter
+  „meine Änderung kommt nicht an": nicht der Browser, sondern `sw.js` lieferte die alte
+  `index.html` – und damit die alten `?v=`-Verweise, obwohl die neuen Dateien längst auf
+  der Platte lagen. Die Seite selbst wird deshalb seit v1.1 **network-first** bedient.
+  Beim Entwickeln trotzdem sicherheitshalber in der Konsole leeren:
+
+  ```js
+  (async()=>{for(const r of await navigator.serviceWorker.getRegistrations())await r.unregister();
+   for(const k of await caches.keys())await caches.delete(k);location.reload()})()
+  ```
+
+  `serve.ps1` schickt zusätzlich `Cache-Control: no-store` und horcht auch auf
+  `127.0.0.1` (eigener Cache-Topf); ein **frischer Tab** hilft ebenfalls.
+- **Die Suche von Open Food Facts gibt es in zwei Fassungen** – die neuere
+  (`search.openfoodfacts.org`) liefert bessere Treffer, sendet aber **keine
+  CORS-Header** und ist aus dem Browser deshalb unbrauchbar. Nicht erneut darauf
+  hereinfallen: es bleibt bei `cgi/search.pl`.
 - **Screenshots laufen in einen Timeout**, solange der Tab nicht im Vordergrund liegt.
   Zustand dann per `javascript_tool` aus dem DOM lesen.
 - Der Service Worker cacht **einzeln** (`cache.add` je Datei), nicht `addAll` – eine

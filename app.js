@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 
-const APP_VERSION = '1.0';
+const APP_VERSION = '1.1';
 
 /* ---------- Speicherschlüssel ---------- */
 const SP = {
@@ -456,13 +456,43 @@ function renderSuchInhalt(){
   // Quelle „Suche"
   const suchtext = $('such-feld').value.trim();
   if (suchtext.length < 2){
-    behaelter.appendChild(bau('p', 'hinweis', 'Tippe ein Lebensmittel ein – die Daten kommen von Open Food Facts.'));
+    renderStoebern(behaelter);
     return;
   }
   sucheStarten(suchtext);
 }
 
-function trefferListe(liste){
+/* Ohne Suchbegriff: die Grundnahrungsmittel nach Gruppen zum Stöbern.
+   Sonst bliebe die wichtigste Quelle unsichtbar, solange niemand das
+   richtige Wort errät. */
+function renderStoebern(behaelter){
+  const hinweis = bau('p', 'klein leise');
+  hinweis.style.margin = '0 2px 12px';
+  hinweis.textContent = 'Tipp einen Namen ein – oder stöber hier durch die Grundnahrungsmittel.';
+  behaelter.appendChild(hinweis);
+
+  for (const [gruppe, liste] of grundnahrungGruppen()){
+    const block = document.createElement('details');
+    block.className = 'akkordeon';
+    block.style.marginTop = '0';
+
+    const titel = document.createElement('summary');
+    titel.appendChild(text(gruppe));
+    const anzahl = bau('span', 'leise klein', ' ' + liste.length);
+    anzahl.style.marginLeft = 'auto';
+    titel.appendChild(anzahl);
+    block.appendChild(titel);
+
+    const inhalt = bau('div', 'inhalt');
+    inhalt.appendChild(trefferListe(liste, true));
+    block.appendChild(inhalt);
+    behaelter.appendChild(block);
+  }
+}
+
+/* `ohneUntertitel` beim Stöbern: dort steht die Gruppe schon als
+   Überschrift darüber, jede Zeile müsste sie nicht wiederholen. */
+function trefferListe(liste, ohneUntertitel){
   const ul = bau('ul', 'treffer');
   for (const lm of liste){
     const li = document.createElement('li');
@@ -481,14 +511,20 @@ function trefferListe(liste){
       platz.style.display = 'grid';
       platz.style.placeItems = 'center';
       platz.style.fontSize = '18px';
-      platz.textContent = lm.fluessig ? '🥤' : '🍽️';
+      platz.textContent = lm.quelle === 'basis'
+        ? (GRUPPEN_ICON[lm.gruppe] || '🍽️')
+        : (lm.fluessig ? '🥤' : '🍽️');
       knopf.appendChild(platz);
     }
 
     const txt = bau('div', 'txt');
     txt.appendChild(bau('div', 'name', lm.name));
-    const unter = [lm.marke, lm.quelle === 'eigen' ? 'eigenes Lebensmittel' : ''].filter(Boolean).join(' · ');
-    txt.appendChild(bau('div', 'sub', unter || 'Open Food Facts'));
+    if (!ohneUntertitel){
+      const unter = lm.quelle === 'basis' ? lm.gruppe
+        : lm.quelle === 'eigen' ? 'eigenes Lebensmittel'
+        : (lm.marke || 'Open Food Facts');
+      txt.appendChild(bau('div', 'sub', unter));
+    }
     knopf.appendChild(txt);
 
     const kcal = bau('div', 'kcal', Math.round(lm.kcal100) + ' kcal');
@@ -502,54 +538,107 @@ function trefferListe(liste){
   return ul;
 }
 
-function sucheStarten(text){
+/* Die Suche läuft zweistufig: Grundnahrungsmittel und eigene Einträge
+   stehen sofort da (sie liegen in der App), die Markenprodukte von
+   Open Food Facts kommen nach. So sieht man auch dann etwas, wenn die
+   Datenbank langsam ist oder gar nicht antwortet. */
+function sucheStarten(suchtext){
   const behaelter = $('such-inhalt');
   behaelter.textContent = '';
+
+  const s = suchtext.toLowerCase();
+  const basis  = grundnahrungSuche(suchtext);
+  const meine  = eigene.filter(lm => lm.name.toLowerCase().includes(s));
+
+  if (meine.length){
+    behaelter.appendChild(abschnitt('Eigene Lebensmittel'));
+    behaelter.appendChild(trefferListe(meine));
+  }
+  if (basis.length){
+    behaelter.appendChild(abschnitt('Grundnahrungsmittel'));
+    behaelter.appendChild(trefferListe(basis));
+  }
+
+  // Platzhalter für die Markenprodukte, wird gleich ersetzt
+  const markenTeil = bau('div');
   const laden = bau('div', 'hinweis');
   laden.appendChild(bau('div', 'spinner'));
-  laden.appendChild(bau('div', null, 'Suche läuft …'));
-  behaelter.appendChild(laden);
+  laden.appendChild(bau('div', null, 'Suche Markenprodukte …'));
+  markenTeil.appendChild(laden);
+  behaelter.appendChild(markenTeil);
 
   if (suchAbbruch) suchAbbruch.abort();
   suchAbbruch = new AbortController();
 
-  offSuche(text, suchAbbruch.signal)
+  offSuche(suchtext, suchAbbruch.signal)
     .then(treffer => {
       if (suchQuelle !== 'suche') return;
-      behaelter.textContent = '';
+      markenTeil.textContent = '';
 
-      // Eigene Lebensmittel mit passendem Namen zuerst zeigen
-      const eigeneTreffer = eigene.filter(lm => lm.name.toLowerCase().includes(text.toLowerCase()));
-      const alle = eigeneTreffer.concat(treffer);
+      // Was schon als Grundnahrungsmittel dasteht, nicht doppelt zeigen
+      const bekannt = new Set(basis.map(x => x.name.toLowerCase()));
+      const neue = treffer.filter(x => !bekannt.has(x.name.toLowerCase()));
 
-      if (!alle.length){
-        behaelter.appendChild(bau('p', 'hinweis', 'Nichts gefunden. Du kannst das Lebensmittel selbst anlegen.'));
-        const knopf = bau('button', 'knopf zweit', '+ „' + text + '" selbst anlegen');
-        knopf.onclick = () => oeffneEigen(null, text);
-        behaelter.appendChild(knopf);
+      if (!neue.length){
+        if (!basis.length && !meine.length) nichtsGefunden(markenTeil, suchtext);
+        else markenTeil.appendChild(fussKnopf(suchtext));
         return;
       }
-      behaelter.appendChild(trefferListe(alle));
+      markenTeil.appendChild(abschnitt('Markenprodukte', 'Open Food Facts'));
+      markenTeil.appendChild(trefferListe(neue));
+      markenTeil.appendChild(fussKnopf(suchtext));
     })
     .catch(fehler => {
       if (fehler.name === 'AbortError') return;
-      behaelter.textContent = '';
-      behaelter.appendChild(bau('p', 'hinweis', 'Die Suche hat nicht geklappt: ' + fehler.message));
-      const knopf = bau('button', 'knopf zweit', 'Selbst anlegen');
-      knopf.onclick = () => oeffneEigen(null, text);
-      behaelter.appendChild(knopf);
+      markenTeil.textContent = '';
+
+      if (basis.length || meine.length){
+        // Es gibt bereits Treffer – die Störung nur beiläufig erwähnen
+        const notiz = bau('p', 'klein leise');
+        notiz.style.textAlign = 'center';
+        notiz.textContent = 'Markenprodukte gerade nicht abrufbar.';
+        markenTeil.appendChild(notiz);
+        markenTeil.appendChild(fussKnopf(suchtext));
+      } else {
+        markenTeil.appendChild(bau('p', 'hinweis', fehler.message));
+        markenTeil.appendChild(fussKnopf(suchtext));
+      }
     });
+}
+
+function abschnitt(titel, unter){
+  const kopf = bau('div');
+  kopf.style.cssText = 'display:flex;align-items:baseline;gap:8px;margin:16px 2px 4px';
+  const h = bau('h3', null, titel);
+  h.style.cssText = 'font-size:13px;color:var(--leise);font-weight:650';
+  kopf.appendChild(h);
+  if (unter) kopf.appendChild(bau('span', 'klein leise', unter));
+  return kopf;
+}
+
+function nichtsGefunden(behaelter, suchtext){
+  behaelter.appendChild(bau('p', 'hinweis', 'Nichts gefunden. Du kannst das Lebensmittel selbst anlegen.'));
+  behaelter.appendChild(fussKnopf(suchtext));
+}
+
+function fussKnopf(suchtext){
+  const knopf = bau('button', 'knopf zweit', '+ „' + suchtext + '" selbst anlegen');
+  knopf.style.marginTop = '14px';
+  knopf.onclick = () => oeffneEigen(null, suchtext);
+  return knopf;
 }
 
 /* ============================================================
    Eintrags-Fenster
    ============================================================ */
 function oeffneDetail(lm, vorgabe){
-  // Eigene bzw. mitgelieferte Portionen zuerst, dahinter die Standardportionen
+  // Eigene bzw. mitgelieferte Portionen zuerst, dahinter die Standardportionen.
+  // Wer schon eigene Portionen hat, bekommt nur noch die allgemeinen dazu –
+  // sonst doppeln sich die Stichwortregeln mit den gepflegten Angaben.
   const eigenePortionen = (lm.portionen || []).filter(p => p && p.name && p.gramm > 0);
   const bekannt = new Set(eigenePortionen.map(p => p.name));
   const portionen = eigenePortionen.concat(
-    portionenFuer(lm.name, lm.fluessig).filter(p => !bekannt.has(p.name))
+    portionenFuer(lm.name, lm.fluessig, eigenePortionen.length > 0).filter(p => !bekannt.has(p.name))
   );
   d = {
     lm: Object.assign({}, lm, { portionen }),
@@ -568,7 +657,9 @@ function oeffneDetail(lm, vorgabe){
 
   $('detail-titel').textContent = d.bearbeiteId ? 'Bearbeiten' : 'Eintragen';
   $('d-name').textContent = lm.name;
-  $('d-marke').textContent = lm.marke || (lm.quelle === 'eigen' ? 'Eigenes Lebensmittel' : '');
+  $('d-marke').textContent = lm.marke
+    || (lm.quelle === 'eigen' ? 'Eigenes Lebensmittel'
+    :  lm.quelle === 'basis' ? 'Grundnahrungsmittel · ' + lm.gruppe : '');
   $('d-loeschen').hidden = !d.bearbeiteId;
   $('d-einheit').value = lm.fluessig ? 'ml' : 'g';
   $('d-basis-einheit').textContent = lm.fluessig ? 'ml' : 'g';

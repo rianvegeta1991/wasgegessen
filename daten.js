@@ -107,15 +107,22 @@ function istFluessig(name){
 }
 
 /* Passende Standardportionen zu einem Namen finden.
-   Liefert immer mindestens die allgemeine Liste zurück. */
-function portionenFuer(name, fluessig){
+   Liefert immer mindestens die allgemeine Liste zurück.
+
+   `nurAllgemein` überspringt die Stichwortregeln. Das ist für
+   Lebensmittel gedacht, die schon eigene Portionen mitbringen: sonst
+   stünde neben „1 mittelgroße Kartoffel – 100 g" auch noch die
+   allgemeine Regel „1 mittelgroße – 150 g" in der Liste. */
+function portionenFuer(name, fluessig, nurAllgemein){
+  const basis = fluessig ? PORTIONEN_ALLGEMEIN_FLUESSIG : PORTIONEN_ALLGEMEIN_FEST;
+  if (nurAllgemein) return basis.slice();
+
   const n = (name || '').toLowerCase();
   const regeln = fluessig ? PORTIONS_REGELN_FLUESSIG : PORTIONS_REGELN;
   const treffer = [];
   for (const regel of regeln){
     if (regel.muster.some(m => n.includes(m))) treffer.push(...regel.portionen);
   }
-  const basis = fluessig ? PORTIONEN_ALLGEMEIN_FLUESSIG : PORTIONEN_ALLGEMEIN_FEST;
   // Treffer zuerst, danach die allgemeinen – ohne Namensdoppler
   const namen = new Set(treffer.map(p => p.name));
   return treffer.concat(basis.filter(p => !namen.has(p.name)));
