@@ -11,10 +11,12 @@ auf deinem Gerät und verlassen es nicht.
 ## Was die App kann
 
 ### Essen eintragen
-- **Rund 190 Grundnahrungsmittel sind fest eingebaut** – Kartoffeln, Butter, Eier, Reis,
-  Nudeln, Brot, Gemüse, Obst, Fleisch, Käse und so weiter, mit Durchschnittswerten und
-  passenden Portionen. Sie stehen sofort da, auch offline, und lassen sich über die
-  Gruppen im Suchfenster durchstöbern.
+- **Rund 290 Lebensmittel und Gerichte sind fest eingebaut** – von Kartoffeln, Butter und
+  Eiern über Brot, Gemüse, Obst und Käse bis zu fertigen Gerichten wie belegten Brötchen,
+  Maultaschen, Currywurst, Käsespätzle, Sushi oder Cappuccino. Alle mit
+  Durchschnittswerten und passenden Portionen („1 Maultasche", „1 Berliner", „1 Tasse").
+  Sie stehen sofort da, auch offline, und lassen sich über die Gruppen im Suchfenster
+  durchstöbern.
 - **Suche** zusätzlich in der Lebensmitteldatenbank von
   [Open Food Facts](https://world.openfoodfacts.org/) für verpackte Markenprodukte
 - **Zwei Eingabearten** je Eintrag, frei wählbar:
@@ -24,6 +26,7 @@ auf deinem Gerät und verlassen es nicht.
 - **Eigene Lebensmittel und Gerichte** anlegen, mit eigenen Portionsgrößen
 - Vier Mahlzeiten: Frühstück, Mittagessen, Abendessen, Snacks
 - Einträge lassen sich antippen, ändern und löschen; Tage lassen sich zurückblättern
+- Die Sucheingabe bleibt stehen und lässt sich mit einem Knopf im Feld löschen
 
 ### Dein Bedarf
 - Profil: Größe, Gewicht, Alter, Geschlecht, Aktivitätslevel (fünf Stufen)
@@ -59,7 +62,7 @@ nur die Lebensmittelsuche und die Bilderkennung brauchen Internet.
 
 ## Entwicklung
 
-Kein Node, kein Build-Schritt. Die App besteht aus einer HTML-Datei und vier
+Kein Node, kein Build-Schritt. Die App besteht aus einer HTML-Datei und fünf
 JavaScript-Dateien.
 
 ```powershell

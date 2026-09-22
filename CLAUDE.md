@@ -35,7 +35,7 @@ nur `app.js` steckt in einer IIFE.
 |---|---|
 | `index.html` | Markup + komplettes CSS |
 | `daten.js` | `AKTIVITAET`, `MAHLZEITEN`, Portionsregeln, `berechneBMR`/`berechneTDEE` |
-| `grundnahrung.js` | `GRUNDNAHRUNG` (rund 190 Einträge) + `grundnahrungSuche` |
+| `grundnahrung.js` | `GRUNDNAHRUNG` (rund 290 Einträge) + `grundnahrungSuche` |
 | `off.js` | Open Food Facts: `offSuche`, Umwandlung ins App-Format |
 | `vision.js` | Bilderkennung über die Anthropic-API |
 | `app.js` | Oberfläche, Zustand, `localStorage` |
@@ -68,7 +68,7 @@ auch noch die Stichwortregel „1 mittelgroße – 150 g".
 
 Zwei Quellen, bewusst getrennt (seit v1.1):
 
-1. **`grundnahrung.js`** – rund 190 Grundnahrungsmittel fest in der App. Das ist die
+1. **`grundnahrung.js`** – rund 290 Lebensmittel und Gerichte fest in der App. Das ist die
    **wichtigere** Quelle: sie ist sofort da, funktioniert offline und überlebt jeden
    Ausfall von Open Food Facts. Nährwerte je 100 g nach europäischer Kennzeichnung
    (**Kohlenhydrate ohne Ballaststoffe**), dazu `alias` für Plural und Synonyme sowie

@@ -189,11 +189,21 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
 
 /* ---------- Suche ---------- */
 .suchleiste{padding:10px 12px;background:var(--karte);border-bottom:1px solid var(--rand);flex:none}
+.such-feld-box{position:relative}
 .suchleiste input{
-  width:100%;padding:11px 14px;border-radius:999px;border:1px solid var(--rand);
+  width:100%;padding:11px 44px 11px 14px;border-radius:999px;border:1px solid var(--rand);
   background:var(--bg);outline:none;
 }
 .suchleiste input:focus{border-color:var(--akzent)}
+/* Eigener Löschknopf: das native X von type="search" gibt es nicht
+   auf allen Geräten, auf dem Handy fast nirgends. */
+#such-leeren{
+  position:absolute;right:4px;top:50%;transform:translateY(-50%);
+  width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
+  color:var(--leise);
+}
+#such-leeren:hover{background:var(--rand)}
+#such-leeren svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
 .reiter{display:flex;gap:4px;padding:8px 12px 10px;background:var(--karte);border-bottom:1px solid var(--rand);flex:none;overflow-x:auto}
 .reiter button{
   padding:7px 14px;border-radius:999px;font-size:13.5px;font-weight:600;
@@ -493,7 +503,12 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
     <button data-schliessen="ov-suche">Fertig</button>
   </div>
   <div class="suchleiste">
-    <input id="such-feld" type="search" placeholder="Lebensmittel oder Gericht suchen…" autocomplete="off" enterkeyhint="search">
+    <div class="such-feld-box">
+      <input id="such-feld" type="text" placeholder="Lebensmittel oder Gericht suchen…" autocomplete="off" enterkeyhint="search">
+      <button id="such-leeren" type="button" aria-label="Sucheingabe löschen" hidden>
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
   </div>
   <div class="reiter" id="such-reiter">
     <button class="aktiv" data-quelle="suche">Suche</button>
@@ -611,10 +626,10 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
 <!-- Die Versionsnummer an den Skripten erzwingt frische Dateien nach einem Update.
      Bei einer neuen Version hier, in APP_VERSION (app.js) und in den ASSETS
      des Service Workers dieselbe Nummer eintragen. -->
-<script src="daten.js?v=1.1"></script>
-<script src="grundnahrung.js?v=1.1"></script>
-<script src="off.js?v=1.1"></script>
-<script src="vision.js?v=1.1"></script>
-<script src="app.js?v=1.1"></script>
+<script src="daten.js?v=1.2"></script>
+<script src="grundnahrung.js?v=1.2"></script>
+<script src="off.js?v=1.2"></script>
+<script src="vision.js?v=1.2"></script>
+<script src="app.js?v=1.2"></script>
 </body>
 </html>

@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 
-const APP_VERSION = '1.1';
+const APP_VERSION = '1.2';
 
 /* ---------- Speicherschlüssel ---------- */
 const SP = {
@@ -412,6 +412,7 @@ function profilSpeichern(){
 function oeffneSuche(mahlzeit){
   zielMahlzeit = mahlzeit || mahlzeitNachUhrzeit();
   oeffneOverlay('ov-suche');
+  setzeLeerKnopf();
   if (suchQuelle === 'suche' && !$('such-feld').value){
     setTimeout(() => $('such-feld').focus(), 300);
   }
@@ -421,8 +422,14 @@ function oeffneSuche(mahlzeit){
 function setzeQuelle(quelle){
   suchQuelle = quelle;
   $$('#such-reiter button').forEach(b => b.classList.toggle('aktiv', b.dataset.quelle === quelle));
-  $('such-feld').parentElement.hidden = (quelle !== 'suche');
+  $('such-feld').closest('.suchleiste').hidden = (quelle !== 'suche');
+  setzeLeerKnopf();
   renderSuchInhalt();
+}
+
+/* Der Löschknopf erscheint nur, wenn auch etwas zu löschen ist */
+function setzeLeerKnopf(){
+  $('such-leeren').hidden = !$('such-feld').value;
 }
 
 function renderSuchInhalt(){
@@ -1175,10 +1182,18 @@ function verdrahten(){
 
   // Suche
   $('such-feld').addEventListener('input', () => {
+    setzeLeerKnopf();
     clearTimeout(suchTimer);
     suchTimer = setTimeout(renderSuchInhalt, 600);
   });
-  $('such-feld').addEventListener('search', renderSuchInhalt);
+  $('such-leeren').onclick = () => {
+    $('such-feld').value = '';
+    setzeLeerKnopf();
+    clearTimeout(suchTimer);
+    if (suchAbbruch) suchAbbruch.abort();
+    renderSuchInhalt();
+    $('such-feld').focus();
+  };
   $$('#such-reiter button').forEach(b => {
     b.onclick = () => setzeQuelle(b.dataset.quelle);
   });
