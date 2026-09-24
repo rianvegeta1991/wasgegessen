@@ -14,7 +14,12 @@
 <style>
 :root{
   --bg:#f4f6f1; --karte:#ffffff; --rand:#e2e6dd; --text:#1f2621; --leise:#6d7a70;
-  --akzent:#3f7d4e; --akzent-hell:#e8f1e9; --warm:#dd8a2f; --rot:#c1483f; --blau:#3a6fa6;
+  /* Rot ist bewusst viel dunkler als das Grün, nicht nur andersfarbig: bei
+     Rot-Grün-Schwäche ist der Farbton kaum zu trennen, der Helligkeits-
+     unterschied dagegen schon. --rot füllt Flächen (Ring, Balken),
+     --rot-text ist für Schrift, die lesbar bleiben muss. */
+  --akzent:#3f7d4e; --akzent-hell:#e8f1e9; --warm:#dd8a2f; --blau:#3a6fa6;
+  --rot:#6d0f22; --rot-text:#6d0f22;
   --schatten:0 1px 3px rgba(20,32,24,.08), 0 6px 18px rgba(20,32,24,.05);
   --r:16px; --r-klein:10px;
   --eiweiss:#3a6fa6; --fett:#dd8a2f; --kh:#7a5fa8;
@@ -22,7 +27,10 @@
 @media (prefers-color-scheme: dark){
   :root{
     --bg:#141815; --karte:#1d221e; --rand:#2c332e; --text:#e7ece8; --leise:#94a199;
-    --akzent:#5aa86d; --akzent-hell:#1f2c23; --warm:#e0a057; --rot:#d9665c; --blau:#6a9dd0;
+    /* Auch im Dunkelmodus bleibt Rot deutlich dunkler als Grün. Schrift
+       braucht hier aber den umgekehrten Weg, sonst ist sie nicht lesbar. */
+    --akzent:#5aa86d; --akzent-hell:#1f2c23; --warm:#e0a057; --blau:#6a9dd0;
+    --rot:#9c2424; --rot-text:#ff8f7f;
     --schatten:0 1px 3px rgba(0,0,0,.35), 0 6px 18px rgba(0,0,0,.25);
     --eiweiss:#6a9dd0; --fett:#e0a057; --kh:#a48ccd;
   }
@@ -83,7 +91,7 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
 /* Ab dem doppelten Tagesziel ist die zweite Runde voll – dann wird der
    ganze Kreis rot, nicht nur die obere Lage. */
 .ring.voll .ring-wert{stroke:var(--rot)}
-.ring.drueber .ring-mitte b{color:var(--rot)}
+.ring.drueber .ring-mitte b{color:var(--rot-text)}
 .ring-mitte{
   position:absolute;inset:0;display:flex;flex-direction:column;
   align-items:center;justify-content:center;text-align:center;
@@ -94,7 +102,7 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
 .fakt{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .fakt b{font-variant-numeric:tabular-nums;font-weight:650}
 .fakt.rest b{color:var(--akzent);font-size:18px}
-.fakt.rest.drueber b{color:var(--rot)}
+.fakt.rest.drueber b{color:var(--rot-text)}
 
 /* ---------- Makro-Balken ---------- */
 .makros{display:flex;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--rand)}
@@ -167,7 +175,7 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
 }
 .knopf:disabled{opacity:.45}
 .knopf.zweit{background:var(--bg);color:var(--text);border:1px solid var(--rand)}
-.knopf.gefahr{background:transparent;color:var(--rot);border:1px solid var(--rand)}
+.knopf.gefahr{background:transparent;color:var(--rot-text);border:1px solid var(--rand)}
 .chips{display:flex;gap:7px;flex-wrap:wrap}
 .chip{
   padding:7px 13px;border-radius:999px;border:1px solid var(--rand);
@@ -248,7 +256,13 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
 .diagramm{display:flex;align-items:flex-end;gap:3px;height:150px;margin:6px 0 4px;position:relative}
 .balken-sp{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:4px}
 .balken{width:100%;border-radius:4px 4px 2px 2px;background:var(--akzent);min-height:2px;transition:height .3s}
-.balken.drueber{background:var(--rot)}
+/* Zusätzlich zur Farbe eine Schraffur: so sind die Tage über dem Ziel auch
+   dann zu erkennen, wenn sich Rot und Grün nicht auseinanderhalten lassen. */
+.balken.drueber{
+  background:var(--rot);
+  background-image:repeating-linear-gradient(45deg,
+    rgba(255,255,255,.30) 0 3px, rgba(255,255,255,0) 3px 7px);
+}
 .balken.leer-tag{background:var(--rand)}
 .balken-sp .bl{font-size:9.5px;color:var(--leise);text-align:center;white-space:nowrap;overflow:hidden}
 .ziel-linie{position:relative;height:0;z-index:2}
@@ -634,10 +648,10 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
 <!-- Die Versionsnummer an den Skripten erzwingt frische Dateien nach einem Update.
      Bei einer neuen Version hier, in APP_VERSION (app.js) und in den ASSETS
      des Service Workers dieselbe Nummer eintragen. -->
-<script src="daten.js?v=1.3"></script>
-<script src="grundnahrung.js?v=1.3"></script>
-<script src="off.js?v=1.3"></script>
-<script src="vision.js?v=1.3"></script>
-<script src="app.js?v=1.3"></script>
+<script src="daten.js?v=1.4"></script>
+<script src="grundnahrung.js?v=1.4"></script>
+<script src="off.js?v=1.4"></script>
+<script src="vision.js?v=1.4"></script>
+<script src="app.js?v=1.4"></script>
 </body>
 </html>

@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 
-const APP_VERSION = '1.3';
+const APP_VERSION = '1.4';
 
 /* ---------- Speicherschlüssel ---------- */
 const SP = {
@@ -135,8 +135,12 @@ function renderHeute(){
   $('ring').classList.toggle('drueber', ueberschuss > 0);
   $('ring').classList.toggle('voll', anteilUeber >= 1);
 
+  // Der Text unter der Zahl sagt im Klartext, woran man ist – das hängt nicht
+  // an der Farbe und hilft, wenn sich Rot und Grün schlecht trennen lassen.
   $('ring-zahl').textContent = Math.round(summe.kcal);
-  $('ring-label').textContent = ziel ? 'von ' + ziel + ' kcal' : 'kcal gegessen';
+  $('ring-label').textContent = !ziel ? 'kcal gegessen'
+    : ueberschuss > 0 ? Math.round(ueberschuss) + ' kcal drüber'
+    : 'von ' + ziel + ' kcal';
 
   // Zahlen daneben
   $('f-ziel').textContent = ziel ? ziel + ' kcal' : 'kein Profil';

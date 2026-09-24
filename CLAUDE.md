@@ -51,6 +51,31 @@ Ein Eintrag trägt **sowohl** die absoluten Werte (`kcal`, `eiweiss`, …) **als
 Werte je 100 g (`kcal100`, …) und die Portionsliste – nur so lässt er sich später
 bearbeiten, ohne das Lebensmittel erneut nachzuschlagen.
 
+### Farben und Rot-Grün-Schwäche (seit v1.4)
+
+**Bastian ist rot-grün-schwach.** Grün und Rot dürfen sich deshalb nie allein im
+Farbton unterscheiden – der Unterschied muss in der **Helligkeit** liegen, die von der
+Farbsehschwäche unberührt bleibt. Bis v1.3 hatten beide Farben zufällig fast dieselbe
+relative Luminanz (0,163 gegen 0,164, Kontrast **1,0:1**) und waren damit praktisch
+nicht zu trennen.
+
+| | hell | dunkel |
+|---|---|---|
+| `--akzent` (grün) | `#3f7d4e` | `#5aa86d` |
+| `--rot` (Flächen: Ring, Balken) | `#6d0f22` | `#9c2424` |
+| `--rot-text` (Schrift) | `#6d0f22` | `#ff8f7f` |
+| Kontrast grün/rot | 2,44:1 | 2,70:1 |
+
+`--rot` ist bewusst dunkel und nur für Flächen gedacht; im Dunkelmodus wäre es als
+Schrift unlesbar, dafür gibt es `--rot-text`. **Beim Ändern von Farben den Kontrast
+nachrechnen** (WCAG-Luminanz, Formel steht im Testabschnitt unten) – eine hübschere
+Farbe, die wieder gleich hell ist, macht die App für ihn unbrauchbar.
+
+Farbe allein reicht ohnehin nie. Wo es auf den Unterschied ankommt, gibt es zusätzlich:
+- **Schraffur** auf den Balken über dem Ziel (`.balken.drueber`),
+- **Klartext** im Ring („700 kcal drüber" statt „von 2000 kcal"),
+- die Zahl im Ring wechselt die Farbe.
+
 ### Tagesring (seit v1.3)
 Zwei Kreise übereinander im selben SVG, beide mit `stroke-dasharray` über den vollen
 Umfang (`2π·55`):
@@ -172,6 +197,17 @@ Makro) und sehr Ballaststoffreiches (Rosenkohl, Himbeeren, Aubergine, Zitrone).
 - GitHub CLI: `C:\Program Files\GitHub CLI\gh.exe`, Konto `rianvegeta1991`.
 
 ## Testen
+
+**Farbkontrast nachrechnen** (relative Luminanz nach WCAG, in der Konsole):
+
+```js
+const lum = h => { const [r,g,b] = h.replace('#','').match(/\w\w/g).map(x => {
+  const c = parseInt(x,16)/255; return c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4); });
+  return 0.2126*r + 0.7152*g + 0.0722*b; };
+const kontrast = (a,b) => (Math.max(lum(a),lum(b))+0.05) / (Math.min(lum(a),lum(b))+0.05);
+kontrast('#3f7d4e','#6d0f22');   // grün gegen rot – soll deutlich über 2 liegen
+```
+
 
 Verifizieren statt hoffen: Server starten (`preview_start`), **frischen Tab** öffnen,
 mobilen Viewport (375×812) setzen, Konsole prüfen, Zustand per DOM auslesen.

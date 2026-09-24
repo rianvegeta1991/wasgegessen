@@ -38,6 +38,12 @@ auf deinem Gerät und verlassen es nicht.
   doppelten Tagesziel ist sie voll und der ganze Kreis wird rot.
 - Wer lieber ein eigenes Ziel setzt, überschreibt den berechneten Wert
 
+### Gut erkennbar
+Grün und Rot unterscheiden sich nicht nur im Farbton, sondern deutlich in der
+Helligkeit – das bleibt auch bei einer Rot-Grün-Schwäche sichtbar. Dazu kommen
+Merkmale, die ganz ohne Farbe auskommen: Tage über dem Ziel sind im Diagramm
+zusätzlich schraffiert, und im Tagesring steht im Klartext, wie viel du drüber bist.
+
 ### Überblick
 - Tagesansicht mit Kalorienring und Eiweiß/Fett/Kohlenhydraten
 - Verlauf über **Woche, Monat und Jahr** als Diagramm, mit Ziellinie und Durchschnitt
