@@ -61,8 +61,13 @@ Umfang (`2π·55`):
 - Ist die zweite Runde voll (doppeltes Ziel), setzt `.voll` auch den unteren Kreis auf
   Rot – der ganze Ring ist dann rot und gefüllt. `.drueber` färbt zusätzlich die Zahl.
 
-Beim Messen im Test: `stroke` läuft über eine Transition (0,3 s), direkt nach dem
-Umschalten misst `getComputedStyle` noch die alte Farbe. Mindestens eine Sekunde warten.
+**Beim Prüfen im Test:** verlässlich ist allein das Attribut `stroke-dashoffset`
+(`kreis.getAttribute(...)`) zusammen mit `ring.className`. Die Farbe über
+`getComputedStyle` ist es nicht – sie läuft über eine Transition und lieferte im
+Vorschau-Browser auch nach Sekunden noch den alten Wert. Die Screenshots des Panes
+hinken dem Rendern ebenfalls hinterher: ein Bild mitten in der Animation zeigt beide
+Ringe gleich weit und sieht dann nach „alles rot" aus. Im Zweifel den Screenshot ohne
+weitere Änderung wiederholen.
 
 ### Rechnen
 Mifflin-St-Jeor: Männer `10×kg + 6,25×cm − 5×Alter + 5`, Frauen dasselbe `− 161`.
