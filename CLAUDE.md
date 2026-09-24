@@ -51,6 +51,19 @@ Ein Eintrag trägt **sowohl** die absoluten Werte (`kcal`, `eiweiss`, …) **als
 Werte je 100 g (`kcal100`, …) und die Portionsliste – nur so lässt er sich später
 bearbeiten, ohne das Lebensmittel erneut nachzuschlagen.
 
+### Tagesring (seit v1.3)
+Zwei Kreise übereinander im selben SVG, beide mit `stroke-dasharray` über den vollen
+Umfang (`2π·55`):
+- `#ring-wert` (grün) zeigt `min(gegessen / ziel, 1)`.
+- `#ring-ueber` (rot, liegt **darüber** – im Markup also danach) zeigt
+  `min((gegessen − ziel) / ziel, 1)`, wächst also erst nach dem Ziel und dreht eine
+  zweite Runde über die erste.
+- Ist die zweite Runde voll (doppeltes Ziel), setzt `.voll` auch den unteren Kreis auf
+  Rot – der ganze Ring ist dann rot und gefüllt. `.drueber` färbt zusätzlich die Zahl.
+
+Beim Messen im Test: `stroke` läuft über eine Transition (0,3 s), direkt nach dem
+Umschalten misst `getComputedStyle` noch die alte Farbe. Mindestens eine Sekunde warten.
+
 ### Rechnen
 Mifflin-St-Jeor: Männer `10×kg + 6,25×cm − 5×Alter + 5`, Frauen dasselbe `− 161`.
 Gesamtumsatz = Grundumsatz × Faktor (1,2 / 1,375 / 1,55 / 1,725 / 1,9).

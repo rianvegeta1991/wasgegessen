@@ -33,7 +33,9 @@ auf deinem Gerät und verlassen es nicht.
 - **Grundumsatz** nach der Mifflin-St-Jeor-Formel
 - **Gesamtumsatz** = Grundumsatz × Aktivitätsfaktor (1,2 bis 1,9)
 - Anzeige: „Um dein Gewicht zu halten, benötigst du ca. X kcal pro Tag"
-- Tagesübersicht mit Ring: aufgenommen, Ziel, verbleibend
+- Tagesübersicht mit Ring: aufgenommen, Ziel, verbleibend. Isst du mehr als geplant,
+  dreht der Ring eine **zweite Runde in Rot** – so groß wie der Überschuss. Beim
+  doppelten Tagesziel ist sie voll und der ganze Kreis wird rot.
 - Wer lieber ein eigenes Ziel setzt, überschreibt den berechneten Wert
 
 ### Überblick

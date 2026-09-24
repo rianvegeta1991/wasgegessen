@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 
-const APP_VERSION = '1.2';
+const APP_VERSION = '1.3';
 
 /* ---------- Speicherschlüssel ---------- */
 const SP = {
@@ -116,12 +116,25 @@ function renderHeute(){
   const summe = summeVon(liste);
   const ziel  = tagesZiel(profil);
 
-  // Ring
-  const anteil = ziel ? Math.min(summe.kcal / ziel, 1) : 0;
+  // Ring: die erste Runde zeigt den Weg zum Tagesziel. Wird es überschritten,
+  // läuft eine zweite Runde in Rot darüber – je nach Überschuss. Ist auch die
+  // voll (also beim doppelten Ziel), färbt sich der ganze Kreis rot.
   const umfang = 2 * Math.PI * 55;
-  $('ring-wert').setAttribute('stroke-dasharray', umfang.toFixed(1));
-  $('ring-wert').setAttribute('stroke-dashoffset', (umfang * (1 - anteil)).toFixed(1));
-  $('ring').classList.toggle('drueber', !!ziel && summe.kcal > ziel);
+  const setzeRing = (id, anteil) => {
+    const kreis = $(id);
+    kreis.setAttribute('stroke-dasharray', umfang.toFixed(1));
+    kreis.setAttribute('stroke-dashoffset', (umfang * (1 - anteil)).toFixed(1));
+  };
+
+  const anteilZiel  = ziel ? Math.min(summe.kcal / ziel, 1) : 0;
+  const ueberschuss = ziel ? Math.max(0, summe.kcal - ziel) : 0;
+  const anteilUeber = ziel ? Math.min(ueberschuss / ziel, 1) : 0;
+
+  setzeRing('ring-wert', anteilZiel);
+  setzeRing('ring-ueber', anteilUeber);
+  $('ring').classList.toggle('drueber', ueberschuss > 0);
+  $('ring').classList.toggle('voll', anteilUeber >= 1);
+
   $('ring-zahl').textContent = Math.round(summe.kcal);
   $('ring-label').textContent = ziel ? 'von ' + ziel + ' kcal' : 'kcal gegessen';
 

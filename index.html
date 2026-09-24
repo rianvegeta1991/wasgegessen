@@ -79,7 +79,11 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
 .ring svg{transform:rotate(-90deg);display:block}
 .ring-track{fill:none;stroke:var(--rand);stroke-width:11}
 .ring-wert{fill:none;stroke:var(--akzent);stroke-width:11;stroke-linecap:round;transition:stroke-dashoffset .5s ease, stroke .3s}
-.ring.drueber .ring-wert{stroke:var(--rot)}
+.ring-ueber{stroke:var(--rot)}
+/* Ab dem doppelten Tagesziel ist die zweite Runde voll – dann wird der
+   ganze Kreis rot, nicht nur die obere Lage. */
+.ring.voll .ring-wert{stroke:var(--rot)}
+.ring.drueber .ring-mitte b{color:var(--rot)}
 .ring-mitte{
   position:absolute;inset:0;display:flex;flex-direction:column;
   align-items:center;justify-content:center;text-align:center;
@@ -351,6 +355,10 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
           <svg width="132" height="132" viewBox="0 0 132 132">
             <circle class="ring-track" cx="66" cy="66" r="55"/>
             <circle class="ring-wert" id="ring-wert" cx="66" cy="66" r="55"
+                    stroke-dasharray="345.6" stroke-dashoffset="345.6"/>
+            <!-- Zweite Runde: liegt über der ersten und wächst erst,
+                 wenn das Tagesziel überschritten ist -->
+            <circle class="ring-wert ring-ueber" id="ring-ueber" cx="66" cy="66" r="55"
                     stroke-dasharray="345.6" stroke-dashoffset="345.6"/>
           </svg>
           <div class="ring-mitte">
@@ -626,10 +634,10 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
 <!-- Die Versionsnummer an den Skripten erzwingt frische Dateien nach einem Update.
      Bei einer neuen Version hier, in APP_VERSION (app.js) und in den ASSETS
      des Service Workers dieselbe Nummer eintragen. -->
-<script src="daten.js?v=1.2"></script>
-<script src="grundnahrung.js?v=1.2"></script>
-<script src="off.js?v=1.2"></script>
-<script src="vision.js?v=1.2"></script>
-<script src="app.js?v=1.2"></script>
+<script src="daten.js?v=1.3"></script>
+<script src="grundnahrung.js?v=1.3"></script>
+<script src="off.js?v=1.3"></script>
+<script src="vision.js?v=1.3"></script>
+<script src="app.js?v=1.3"></script>
 </body>
 </html>
