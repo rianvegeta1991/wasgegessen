@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 
-const APP_VERSION = '1.4';
+const APP_VERSION = '1.5';
 
 /* ---------- Speicherschlüssel ---------- */
 const SP = {

@@ -11,12 +11,13 @@ auf deinem Gerät und verlassen es nicht.
 ## Was die App kann
 
 ### Essen eintragen
-- **Rund 290 Lebensmittel und Gerichte sind fest eingebaut** – von Kartoffeln, Butter und
-  Eiern über Brot, Gemüse, Obst und Käse bis zu fertigen Gerichten wie belegten Brötchen,
-  Maultaschen, Currywurst, Käsespätzle, Sushi oder Cappuccino. Alle mit
-  Durchschnittswerten und passenden Portionen („1 Maultasche", „1 Berliner", „1 Tasse").
-  Sie stehen sofort da, auch offline, und lassen sich über die Gruppen im Suchfenster
-  durchstöbern.
+- **Rund 425 Lebensmittel und Gerichte sind fest eingebaut** – von Kartoffeln, Butter und
+  Eiern über Brot, Gemüse, Obst und Käse bis zu fertigen Gerichten: deutsche Küche
+  (Maultaschen, Grüne Soße, Flammkuchen, Schweinshaxe, Labskaus), Imbiss (Döner,
+  Currywurst, Falafelsandwich, Fish and Chips) und internationale Klassiker (Ramen,
+  Pad Thai, Moussaka, Paella, Tikka Masala, Burrito). Alle mit Durchschnittswerten und
+  passenden Portionen („1 Maultasche", „1 Berliner", „1 Tasse"). Sie stehen sofort da,
+  auch offline, und lassen sich über die Gruppen im Suchfenster durchstöbern.
 - **Suche** zusätzlich in der Lebensmitteldatenbank von
   [Open Food Facts](https://world.openfoodfacts.org/) für verpackte Markenprodukte
 - **Zwei Eingabearten** je Eintrag, frei wählbar:
