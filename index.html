@@ -118,6 +118,32 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
 .m-fett .fuell{background:var(--fett)} .m-fett .kopfz span{color:var(--fett)}
 .m-kh .fuell{background:var(--kh)} .m-kh .kopfz span{color:var(--kh)}
 
+/* ---------- Verteilung der Kalorien ---------- */
+.verteilung{margin-top:14px;padding-top:13px;border-top:1px solid var(--rand)}
+.vert-kopf{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px;margin-bottom:7px}
+.vert-bahn{display:flex;height:11px;border-radius:6px;overflow:hidden;background:var(--rand)}
+.vt{height:100%;width:0;transition:width .4s}
+/* Die drei Nährstoffe tragen eigene Muster, nicht nur eigene Farben –
+   so bleiben die Abschnitte auch bei einer Farbsehschwäche trennbar. */
+.v-eiweiss{background:var(--eiweiss)}
+.v-fett{
+  background:var(--fett);
+  background-image:repeating-linear-gradient(45deg,
+    rgba(255,255,255,.35) 0 2px, rgba(255,255,255,0) 2px 6px);
+}
+.v-kh{
+  background:var(--kh);
+  background-image:repeating-linear-gradient(-45deg,
+    rgba(0,0,0,.22) 0 3px, rgba(0,0,0,0) 3px 7px);
+}
+.vert-text{display:flex;justify-content:space-between;gap:8px;margin-top:7px;font-size:11.5px}
+.vert-text b{font-variant-numeric:tabular-nums;font-weight:650}
+.vert-text .pos{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.vert-text .punkt{width:9px;height:9px;border-radius:2px;flex:none}
+.vert-text .p-eiweiss{background:var(--eiweiss)}
+.vert-text .p-fett{background:var(--fett)}
+.vert-text .p-kh{background:var(--kh)}
+
 /* ---------- Mahlzeiten ---------- */
 .mahlzeit{margin-bottom:14px}
 .mahlzeit-kopf{display:flex;align-items:center;gap:10px;padding:0 4px 8px}
@@ -391,6 +417,21 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
         <div class="makro m-fett"><div class="kopfz"><span>Fett</span><b id="mk-fett">0 g</b></div><div class="bahn"><div class="fuell" id="mkb-fett"></div></div></div>
         <div class="makro m-kh"><div class="kopfz"><span>Kohlenhydrate</span><b id="mk-kh">0 g</b></div><div class="bahn"><div class="fuell" id="mkb-kh"></div></div></div>
       </div>
+
+      <!-- Woraus die Kalorien heute kamen: ein Balken über die ganze Breite,
+           aufgeteilt nach dem Kalorienanteil der drei Nährstoffe. -->
+      <div class="verteilung" id="verteilung" hidden>
+        <div class="vert-kopf">
+          <span>Verteilung der Kalorien</span>
+          <span class="leise" id="vert-ziel"></span>
+        </div>
+        <div class="vert-bahn">
+          <div class="vt v-eiweiss" id="vt-eiweiss"></div>
+          <div class="vt v-fett" id="vt-fett"></div>
+          <div class="vt v-kh" id="vt-kh"></div>
+        </div>
+        <div class="vert-text" id="vert-text"></div>
+      </div>
     </div>
     <div id="mahlzeiten"></div>
   </section>
@@ -442,7 +483,17 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
       <div class="feld-reihe">
         <div class="feld"><label for="p-groesse">Größe (cm)</label><input id="p-groesse" type="text" inputmode="numeric" placeholder="175"></div>
         <div class="feld"><label for="p-gewicht">Gewicht (kg)</label><input id="p-gewicht" type="text" inputmode="decimal" placeholder="70"></div>
-        <div class="feld"><label for="p-alter">Alter</label><input id="p-alter" type="text" inputmode="numeric" placeholder="30"></div>
+      </div>
+      <div class="feld">
+        <label for="p-geburtstag">Geburtsdatum</label>
+        <input id="p-geburtstag" type="date" min="1900-01-01">
+        <p class="klein leise" id="alter-hinweis" style="margin:6px 2px 0"></p>
+      </div>
+      <!-- Ältere Profile haben nur eine feste Altersangabe. Das Feld bleibt
+           für sie sichtbar, verschwindet aber, sobald ein Geburtsdatum da ist. -->
+      <div class="feld" id="feld-alter" hidden>
+        <label for="p-alter">Alter <span class="leise klein">(fest eingetragen)</span></label>
+        <input id="p-alter" type="text" inputmode="numeric" placeholder="30">
       </div>
       <div class="feld">
         <label for="p-aktivitaet">Aktivitätslevel</label>
@@ -648,10 +699,10 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
 <!-- Die Versionsnummer an den Skripten erzwingt frische Dateien nach einem Update.
      Bei einer neuen Version hier, in APP_VERSION (app.js) und in den ASSETS
      des Service Workers dieselbe Nummer eintragen. -->
-<script src="daten.js?v=1.5"></script>
-<script src="grundnahrung.js?v=1.5"></script>
-<script src="off.js?v=1.5"></script>
-<script src="vision.js?v=1.5"></script>
-<script src="app.js?v=1.5"></script>
+<script src="daten.js?v=1.6"></script>
+<script src="grundnahrung.js?v=1.6"></script>
+<script src="off.js?v=1.6"></script>
+<script src="vision.js?v=1.6"></script>
+<script src="app.js?v=1.6"></script>
 </body>
 </html>

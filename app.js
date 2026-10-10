@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 
-const APP_VERSION = '1.5';
+const APP_VERSION = '1.6';
 
 /* ---------- Speicherschlüssel ---------- */
 const SP = {
@@ -73,7 +73,7 @@ function datumLesbar(s){
 }
 
 /* ---------- Zustand ---------- */
-let profil    = lade(SP.profil, { groesse:null, gewicht:null, alter:null, geschlecht:null, aktivitaet:'leicht', zielManuell:null });
+let profil    = lade(SP.profil, { groesse:null, gewicht:null, alter:null, geburtstag:null, geschlecht:null, aktivitaet:'leicht', zielManuell:null });
 let eintraege = lade(SP.eintraege, []);
 let eigene    = lade(SP.eigene, []);
 let zuletzt   = lade(SP.zuletzt, []);
@@ -154,6 +154,7 @@ function renderHeute(){
   setzeMakro('eiweiss', summe.eiweiss, mz && mz.eiweiss);
   setzeMakro('fett',    summe.fett,    mz && mz.fett);
   setzeMakro('kh',      summe.kh,      mz && mz.kh);
+  renderVerteilung(summe);
 
   renderMahlzeiten(liste);
 }
@@ -163,6 +164,44 @@ function setzeMakro(name, wert, ziel){
     ? Math.round(wert) + ' / ' + ziel + ' g'
     : Math.round(wert) + ' g';
   $('mkb-' + name).style.width = ziel ? Math.min(100, (wert / ziel) * 100) + '%' : '0%';
+}
+
+/* Woraus die Kalorien des Tages kamen. Gerechnet wird mit den
+   Brennwerten der Nährstoffe (Eiweiß und Kohlenhydrate 4 kcal/g,
+   Fett 9 kcal/g), nicht mit der Kalorienangabe des Lebensmittels –
+   sonst gingen Rundungen und Alkohol in die Anteile ein. */
+function renderVerteilung(summe){
+  const box = $('verteilung');
+  const ausEiweiss = summe.eiweiss * 4;
+  const ausFett    = summe.fett * 9;
+  const ausKh      = summe.kh * 4;
+  const gesamt     = ausEiweiss + ausFett + ausKh;
+
+  // Ohne Einträge gibt es nichts zu verteilen
+  if (gesamt < 1){ box.hidden = true; return; }
+  box.hidden = false;
+
+  const anteile = {
+    eiweiss: ausEiweiss / gesamt * 100,
+    fett:    ausFett / gesamt * 100,
+    kh:      ausKh / gesamt * 100
+  };
+  for (const [name, wert] of Object.entries(anteile)){
+    $('vt-' + name).style.width = wert.toFixed(1) + '%';
+  }
+
+  const text = $('vert-text');
+  text.textContent = '';
+  [['eiweiss','Eiweiß'], ['fett','Fett'], ['kh','Kohlenh.']].forEach(([id, name]) => {
+    const pos = bau('div', 'pos');
+    pos.appendChild(bau('span', 'punkt p-' + id));
+    pos.appendChild(bau('span', null, name + ' '));
+    pos.appendChild(bau('b', null, Math.round(anteile[id]) + ' %'));
+    text.appendChild(pos);
+  });
+
+  // Zum Vergleich die Richtwerte, nach denen auch die Balken oben rechnen
+  $('vert-ziel').textContent = 'empfohlen 20 / 30 / 50 %';
 }
 
 function renderMahlzeiten(liste){
@@ -377,6 +416,16 @@ function renderProfil(){
   $('p-groesse').value = alsText(profil.groesse);
   $('p-gewicht').value = alsText(profil.gewicht);
   $('p-alter').value   = alsText(profil.alter);
+  $('p-geburtstag').value = profil.geburtstag || '';
+
+  // Das Geburtsdatum hat Vorrang; das alte Altersfeld bleibt nur sichtbar,
+  // solange noch keines eingetragen ist und eine Zahl gespeichert war.
+  const ausGeburtstag = alterAusGeburtstag(profil.geburtstag);
+  $('feld-alter').hidden = (ausGeburtstag !== null) || !profil.alter;
+  $('alter-hinweis').textContent = ausGeburtstag !== null
+    ? 'Du bist ' + ausGeburtstag + ' Jahre alt – das zählt von allein weiter.'
+    : (profil.alter ? 'Trag dein Geburtsdatum ein, dann läuft das Alter von selbst mit.'
+                    : 'Daraus wird dein Alter berechnet.');
   $('p-aktivitaet').value = profil.aktivitaet;
   $('p-ziel').value = profil.zielManuell || '';
   $('aktivitaet-hilfe').textContent = (AKTIVITAET.find(a => a.id === profil.aktivitaet) || {}).hilfe || '';
@@ -544,9 +593,15 @@ function trefferListe(liste, ohneUntertitel){
     const txt = bau('div', 'txt');
     txt.appendChild(bau('div', 'name', lm.name));
     if (!ohneUntertitel){
-      const unter = lm.quelle === 'basis' ? lm.gruppe
+      let unter = lm.quelle === 'basis' ? lm.gruppe
         : lm.quelle === 'eigen' ? 'eigenes Lebensmittel'
         : (lm.marke || 'Open Food Facts');
+      // Kam der Treffer über ein anderes Wort, gehört das dazu – sonst
+      // wirkt er wie ein Fehlgriff ("Knusperstange" → "Laugenstange").
+      if (lm.gefundenUeber){
+        const wort = lm.gefundenUeber;
+        unter += ' · auch: ' + wort.charAt(0).toUpperCase() + wort.slice(1);
+      }
       txt.appendChild(bau('div', 'sub', unter));
     }
     knopf.appendChild(txt);
@@ -1284,6 +1339,20 @@ function verdrahten(){
       profilSpeichern();
     });
   }
+
+  $('p-geburtstag').addEventListener('change', () => {
+    const wert = $('p-geburtstag').value;
+    const alter = alterAusGeburtstag(wert);
+    if (wert && alter === null){
+      toast('Das Geburtsdatum ergibt kein sinnvolles Alter.');
+      $('p-geburtstag').value = profil.geburtstag || '';
+      return;
+    }
+    profil.geburtstag = wert || null;
+    // Die alte feste Zahl wird überflüssig, sobald ein Datum da ist
+    if (alter !== null) profil.alter = null;
+    profilSpeichern();
+  });
 
   const auswahl = $('p-aktivitaet');
   for (const a of AKTIVITAET){

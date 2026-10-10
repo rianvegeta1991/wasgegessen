@@ -35,7 +35,7 @@ nur `app.js` steckt in einer IIFE.
 |---|---|
 | `index.html` | Markup + komplettes CSS |
 | `daten.js` | `AKTIVITAET`, `MAHLZEITEN`, Portionsregeln, `berechneBMR`/`berechneTDEE` |
-| `grundnahrung.js` | `GRUNDNAHRUNG` (rund 425 Einträge) + `grundnahrungSuche` |
+| `grundnahrung.js` | `GRUNDNAHRUNG` (rund 435 Einträge) + `grundnahrungSuche` |
 | `off.js` | Open Food Facts: `offSuche`, Umwandlung ins App-Format |
 | `vision.js` | Bilderkennung über die Anthropic-API |
 | `app.js` | Oberfläche, Zustand, `localStorage` |
@@ -94,6 +94,14 @@ hinken dem Rendern ebenfalls hinterher: ein Bild mitten in der Animation zeigt b
 Ringe gleich weit und sieht dann nach „alles rot" aus. Im Zweifel den Screenshot ohne
 weitere Änderung wiederholen.
 
+### Alter und Geburtsdatum (seit v1.6)
+Im Profil steht ein **Geburtsdatum** (`profil.geburtstag`, ISO), aus dem
+`alterAusGeburtstag` das Alter rechnet – so läuft es von allein weiter. Profile von
+vorher haben nur `profil.alter` als feste Zahl; `profilAlter(profil)` nimmt das
+Geburtsdatum, wenn eines da ist, sonst die Zahl. **Nie wieder direkt `profil.alter`
+lesen**, immer `profilAlter()`. Sobald ein Datum eingetragen wird, setzt die App
+`alter` auf `null` und blendet das alte Feld (`#feld-alter`) aus.
+
 ### Rechnen
 Mifflin-St-Jeor: Männer `10×kg + 6,25×cm − 5×Alter + 5`, Frauen dasselbe `− 161`.
 Gesamtumsatz = Grundumsatz × Faktor (1,2 / 1,375 / 1,55 / 1,725 / 1,9).
@@ -111,7 +119,7 @@ auch noch die Stichwortregel „1 mittelgroße – 150 g".
 
 Zwei Quellen, bewusst getrennt (seit v1.1):
 
-1. **`grundnahrung.js`** – rund 425 Lebensmittel und Gerichte fest in der App. Das ist die
+1. **`grundnahrung.js`** – rund 435 Lebensmittel und Gerichte fest in der App. Das ist die
    **wichtigere** Quelle: sie ist sofort da, funktioniert offline und überlebt jeden
    Ausfall von Open Food Facts. Nährwerte je 100 g nach europäischer Kennzeichnung
    (**Kohlenhydrate ohne Ballaststoffe**), dazu `alias` für Plural und Synonyme sowie
@@ -122,6 +130,11 @@ Zwei Quellen, bewusst getrennt (seit v1.1):
 erscheinen **sofort**, die Markenprodukte werden nachgeladen. Fällt Open Food Facts aus,
 steht dort nur eine beiläufige Notiz – die Suche bleibt benutzbar. Ohne Suchbegriff
 zeigt `renderStoebern` die Gruppen zum Durchblättern.
+
+**Alias-Treffer werden angezeigt.** Kommt ein Treffer über ein Suchwort statt über den
+Namen, steht das im Untertitel („Laugenstange · auch: Knusperstange"). Ohne diesen
+Hinweis wirkt der Treffer wie ein Fehlgriff, und man hält den Eintrag für fehlend –
+genau das ist passiert. `grundnahrungPunkte` liefert dafür `{punkte, alias}`.
 
 **Neue Einträge prüfen:** `kcal` sollte ungefähr `4×Eiweiß + 4×KH + 9×Fett` ergeben.
 In der Konsole:

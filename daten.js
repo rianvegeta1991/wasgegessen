@@ -132,11 +132,36 @@ function portionenFuer(name, fluessig, nurAllgemein){
    Bedarfsrechnung
    ============================================================ */
 
+/* Alter aus einem Geburtsdatum (ISO: JJJJ-MM-TT).
+   Null, wenn das Datum fehlt oder unsinnig ist. */
+function alterAusGeburtstag(iso){
+  if (!iso) return null;
+  const [j, m, t] = String(iso).split('-').map(Number);
+  if (!j || !m || !t) return null;
+
+  const heute = new Date();
+  let alter = heute.getFullYear() - j;
+  // Geburtstag dieses Jahr noch nicht gehabt? Dann ein Jahr abziehen.
+  const hatteGeburtstag = (heute.getMonth() + 1 > m)
+    || (heute.getMonth() + 1 === m && heute.getDate() >= t);
+  if (!hatteGeburtstag) alter--;
+
+  return (alter >= 0 && alter <= 130) ? alter : null;
+}
+
+/* Das Alter des Profils. Ein hinterlegtes Geburtsdatum hat Vorrang –
+   damit läuft das Alter von allein weiter. Ältere Profile, die nur eine
+   feste Zahl gespeichert haben, funktionieren unverändert. */
+function profilAlter(profil){
+  return alterAusGeburtstag(profil.geburtstag) ?? profil.alter ?? null;
+}
+
 /* Grundumsatz nach Mifflin-St-Jeor.
    Männer: 10×kg + 6,25×cm − 5×Alter + 5
    Frauen: 10×kg + 6,25×cm − 5×Alter − 161 */
 function berechneBMR(profil){
-  const { gewicht, groesse, alter, geschlecht } = profil;
+  const { gewicht, groesse, geschlecht } = profil;
+  const alter = profilAlter(profil);
   if (!gewicht || !groesse || !alter || !geschlecht) return null;
   const basis = 10 * gewicht + 6.25 * groesse - 5 * alter;
   return Math.round(basis + (geschlecht === 'm' ? 5 : -161));

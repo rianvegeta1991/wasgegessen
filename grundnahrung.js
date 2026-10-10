@@ -619,9 +619,12 @@ const GRUNDNAHRUNG = [
   { gruppe:'Brot', name:'Wurstbrot', alias:['brot mit wurst','salamibrot'],
     kcal:338, eiweiss:11.0, fett:18.0, kh:31.0,
     portionen:[{name:'1 Scheibe',gramm:75},{name:'2 Scheiben',gramm:150}] },
-  { gruppe:'Brot', name:'Marmeladenbrot', alias:['brot mit marmelade','honigbrot'],
+  { gruppe:'Brot', name:'Marmeladenbrot', alias:['brot mit marmelade','konfitürenbrot'],
     kcal:315, eiweiss:4.5, fett:11.5, kh:48.0,
     portionen:[{name:'1 Scheibe',gramm:75}] },
+  { gruppe:'Brot', name:'Honigbrot', alias:['brot mit honig'],
+    kcal:318, eiweiss:4.8, fett:9.7, kh:50.7,
+    portionen:[{name:'1 Scheibe',gramm:75},{name:'2 Scheiben',gramm:150}] },
   { gruppe:'Brot', name:'Nutellabrot', alias:['schokobrot','brot mit nutella'],
     kcal:338, eiweiss:6.0, fett:13.0, kh:48.0,
     portionen:[{name:'1 Scheibe',gramm:65}] },
@@ -1353,7 +1356,33 @@ const GRUNDNAHRUNG = [
     portionen:[{name:'1 Stück',gramm:35}] },
   { gruppe:'Fleisch', name:'Rohschinken', alias:['serranoschinken','parmaschinken','schwarzwälder schinken'],
     kcal:240, eiweiss:28.0, fett:14.0, kh:0,
-    portionen:[{name:'1 Scheibe',gramm:15}] }
+    portionen:[{name:'1 Scheibe',gramm:15}] },
+
+  /* ---------- Asiatisches Gebäck und Süßigkeiten ---------- */
+  { gruppe:'Süßes', name:'Mondkuchen', alias:['mooncake','yuebing'],
+    kcal:400, eiweiss:7.0, fett:15.0, kh:58.0,
+    portionen:[{name:'1 Mondkuchen',gramm:180},{name:'1 Viertel',gramm:45},{name:'1 kleiner Mondkuchen',gramm:60}] },
+  { gruppe:'Süßes', name:'Mochi', alias:['daifuku','reiskuchen japanisch'],
+    kcal:230, eiweiss:3.0, fett:1.0, kh:52.0,
+    portionen:[{name:'1 Mochi',gramm:40},{name:'2 Mochi',gramm:80}] },
+  { gruppe:'Süßes', name:'Eismochi', alias:['mochi eis','ice mochi'],
+    kcal:250, eiweiss:3.0, fett:7.0, kh:43.0,
+    portionen:[{name:'1 Stück',gramm:35}] },
+  { gruppe:'Süßes', name:'Dorayaki', alias:['japanischer pfannkuchen'],
+    kcal:290, eiweiss:7.0, fett:4.0, kh:56.0,
+    portionen:[{name:'1 Stück',gramm:70}] },
+  { gruppe:'Süßes', name:'Sesambällchen', alias:['jian dui','sesamball'],
+    kcal:330, eiweiss:5.0, fett:13.0, kh:47.0,
+    portionen:[{name:'1 Stück',gramm:45}] },
+  { gruppe:'Süßes', name:'Glückskeks', alias:['fortune cookie'],
+    kcal:380, eiweiss:4.0, fett:3.0, kh:84.0,
+    portionen:[{name:'1 Keks',gramm:8}] },
+  { gruppe:'Süßes', name:'Matchakuchen', alias:['matcha kuchen','grüntee kuchen'],
+    kcal:330, eiweiss:6.0, fett:16.0, kh:40.0,
+    portionen:[{name:'1 Stück',gramm:90}] },
+  { gruppe:'Süßes', name:'Churros', alias:['churro'],
+    kcal:380, eiweiss:5.0, fett:20.0, kh:44.0,
+    portionen:[{name:'1 Stück',gramm:40},{name:'1 Portion',gramm:120}] }
 ];
 
 /* Zeichen je Gruppe – erleichtert das Überfliegen der Trefferliste */
@@ -1374,8 +1403,8 @@ function grundnahrungSuche(text){
 
   const treffer = [];
   GRUNDNAHRUNG.forEach((lm, idx) => {
-    const punkte = grundnahrungPunkte(lm, s);
-    if (punkte >= 20) treffer.push({ lm, punkte, idx });
+    const { punkte, alias } = grundnahrungPunkte(lm, s);
+    if (punkte >= 20) treffer.push({ lm, punkte, idx, alias });
   });
   // Bei gleicher Punktzahl entscheidet die Reihenfolge in der Liste oben.
   // Sie ist bewusst gesetzt: „Kartoffeln, gekocht" steht vor „roh", weil
@@ -1383,13 +1412,17 @@ function grundnahrungSuche(text){
   return treffer
     .sort((a, b) => b.punkte - a.punkte || a.idx - b.idx)
     .slice(0, 12)
-    .map(t => grundnahrungAlsLebensmittel(t.lm));
+    .map(t => grundnahrungAlsLebensmittel(t.lm, t.alias));
 }
 
+/* Punktzahl des besten Treffers – und über welches Wort er zustande kam.
+   Letzteres zeigt die Liste an: Wer „Knusperstange" sucht und
+   „Laugenstange" angeboten bekommt, soll sehen, dass das sein Gebäck ist. */
 function grundnahrungPunkte(lm, s){
   const name = lm.name.toLowerCase();
   const woerter = [name].concat(lm.alias || []);
   let beste = 0;
+  let bestesWort = null;
 
   for (const wort of woerter){
     const w = wort.toLowerCase();
@@ -1401,10 +1434,11 @@ function grundnahrungPunkte(lm, s){
     else if (s.length > 4 && s.startsWith(w)) p = 20;              // "kartoffeln" findet "kartoffel"
     // Alias-Treffer deutlich abwerten: sonst steht bei „Zucker" der
     // Zuckermais vor dem Zucker, weil beide am Wortanfang passen.
-    if (p > 0 && wort !== lm.name.toLowerCase()) p -= 20;
-    beste = Math.max(beste, p);
+    const istAlias = (wort !== name);
+    if (p > 0 && istAlias) p -= 20;
+    if (p > beste){ beste = p; bestesWort = istAlias ? wort : null; }
   }
-  return beste;
+  return { punkte: beste, alias: bestesWort };
 }
 
 function entschaerfen(text){
@@ -1412,7 +1446,7 @@ function entschaerfen(text){
 }
 
 /* Ins App-Format bringen – dasselbe, das auch offSuche liefert */
-function grundnahrungAlsLebensmittel(lm){
+function grundnahrungAlsLebensmittel(lm, gefundenUeber){
   return {
     id: 'basis:' + lm.name,
     quelle: 'basis',
@@ -1420,6 +1454,7 @@ function grundnahrungAlsLebensmittel(lm){
     marke: '',
     bild: '',
     gruppe: lm.gruppe,
+    gefundenUeber: gefundenUeber || null,
     fluessig: !!lm.fluessig,
     kcal100: lm.kcal,
     eiweiss100: lm.eiweiss,

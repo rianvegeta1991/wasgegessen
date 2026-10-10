@@ -11,7 +11,7 @@ auf deinem Gerät und verlassen es nicht.
 ## Was die App kann
 
 ### Essen eintragen
-- **Rund 425 Lebensmittel und Gerichte sind fest eingebaut** – von Kartoffeln, Butter und
+- **Rund 435 Lebensmittel und Gerichte sind fest eingebaut** – von Kartoffeln, Butter und
   Eiern über Brot, Gemüse, Obst und Käse bis zu fertigen Gerichten: deutsche Küche
   (Maultaschen, Grüne Soße, Flammkuchen, Schweinshaxe, Labskaus), Imbiss (Döner,
   Currywurst, Falafelsandwich, Fish and Chips) und internationale Klassiker (Ramen,
@@ -30,7 +30,8 @@ auf deinem Gerät und verlassen es nicht.
 - Die Sucheingabe bleibt stehen und lässt sich mit einem Knopf im Feld löschen
 
 ### Dein Bedarf
-- Profil: Größe, Gewicht, Alter, Geschlecht, Aktivitätslevel (fünf Stufen)
+- Profil: Größe, Gewicht, **Geburtsdatum** (das Alter läuft dann von allein mit),
+  Geschlecht, Aktivitätslevel (fünf Stufen)
 - **Grundumsatz** nach der Mifflin-St-Jeor-Formel
 - **Gesamtumsatz** = Grundumsatz × Aktivitätsfaktor (1,2 bis 1,9)
 - Anzeige: „Um dein Gewicht zu halten, benötigst du ca. X kcal pro Tag"
@@ -46,7 +47,8 @@ Merkmale, die ganz ohne Farbe auskommen: Tage über dem Ziel sind im Diagramm
 zusätzlich schraffiert, und im Tagesring steht im Klartext, wie viel du drüber bist.
 
 ### Überblick
-- Tagesansicht mit Kalorienring und Eiweiß/Fett/Kohlenhydraten
+- Tagesansicht mit Kalorienring, Eiweiß/Fett/Kohlenhydraten und einem Balken, der zeigt,
+  **woraus die Kalorien kamen** (Anteile der drei Nährstoffe, mit Richtwert zum Vergleich)
 - Verlauf über **Woche, Monat und Jahr** als Diagramm, mit Ziellinie und Durchschnitt
 - Protokoll der letzten Tage, ein Tippen springt zu dem Tag
 - **CSV-Export** aller Einträge (Semikolon und Komma, öffnet direkt in Excel)
