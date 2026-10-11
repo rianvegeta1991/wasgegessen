@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 
-const APP_VERSION = '1.6';
+const APP_VERSION = '1.7';
 
 /* ---------- Speicherschlüssel ---------- */
 const SP = {
@@ -194,7 +194,7 @@ function renderVerteilung(summe){
   text.textContent = '';
   [['eiweiss','Eiweiß'], ['fett','Fett'], ['kh','Kohlenh.']].forEach(([id, name]) => {
     const pos = bau('div', 'pos');
-    pos.appendChild(bau('span', 'punkt p-' + id));
+    pos.appendChild(bau('span', 'punkt v-' + id));
     pos.appendChild(bau('span', null, name + ' '));
     pos.appendChild(bau('b', null, Math.round(anteile[id]) + ' %'));
     text.appendChild(pos);
@@ -321,7 +321,92 @@ function renderVerlauf(){
     $('st-bilanz').textContent = '–';
   }
 
+  renderNaehrstoffe(daten);
   renderProtokoll();
+}
+
+/* Nährstoffe über den gewählten Zeitraum: je Tag (bzw. Monat) ein
+   Balken, der nach dem Kalorienanteil der drei Nährstoffe gestapelt
+   ist. Die Höhe entspricht derselben Skala wie im Diagramm darüber,
+   damit sich beide Ansichten vergleichen lassen. */
+function renderNaehrstoffe(daten){
+  const diagramm = $('naehr-diagramm');
+  const schnitt  = $('naehr-schnitt');
+  diagramm.textContent = '';
+  schnitt.textContent = '';
+
+  const istJahr = (aktZeitraum === 'jahr');
+  $('naehr-titel').textContent = istJahr
+    ? 'Woraus die Kalorien kamen (Schnitt je Monat)'
+    : 'Woraus die Kalorien kamen';
+
+  // Kalorien je Nährstoff – über die Brennwerte, nicht über die
+  // Kalorienangabe des Lebensmittels (siehe renderVerteilung)
+  const ausMakros = (x) => ({
+    eiweiss: x.eiweiss * 4, fett: x.fett * 9, kh: x.kh * 4
+  });
+  const mitWerten = daten.filter(x => {
+    const m = ausMakros(x);
+    return m.eiweiss + m.fett + m.kh > 1;
+  });
+
+  if (!mitWerten.length){
+    diagramm.appendChild(bau('p', 'naehr-leer',
+      'Für diesen Zeitraum sind noch keine Nährwerte erfasst.'));
+    return;
+  }
+
+  const hoechst = Math.max(...daten.map(x => {
+    const m = ausMakros(x);
+    return m.eiweiss + m.fett + m.kh;
+  }), 1) * 1.1;
+
+  for (const eintrag of daten){
+    const m = ausMakros(eintrag);
+    const gesamt = m.eiweiss + m.fett + m.kh;
+    const spalte = bau('div', 'balken-sp');
+    const saeule = bau('div', 'naehr-saeule');
+
+    if (gesamt < 1){
+      saeule.classList.add('leer-tag');
+      saeule.style.height = '2px';
+    } else {
+      saeule.style.height = Math.max(3, (gesamt / hoechst) * BALKEN_MAX) + 'px';
+      // Von unten nach oben: Kohlenhydrate, Fett, Eiweiß
+      for (const [name, wert] of [['kh', m.kh], ['fett', m.fett], ['eiweiss', m.eiweiss]]){
+        const teil = bau('div', 'naehr-teil v-' + name);
+        teil.style.height = (wert / gesamt * 100) + '%';
+        saeule.appendChild(teil);
+      }
+      saeule.title = eintrag.label + ': '
+        + Math.round(m.eiweiss / gesamt * 100) + ' % Eiweiß, '
+        + Math.round(m.fett / gesamt * 100) + ' % Fett, '
+        + Math.round(m.kh / gesamt * 100) + ' % Kohlenhydrate';
+    }
+
+    spalte.appendChild(saeule);
+    spalte.appendChild(bau('div', 'bl', eintrag.kurz));
+    diagramm.appendChild(spalte);
+  }
+
+  // Schnitt über die Tage, an denen überhaupt etwas erfasst wurde
+  const mittel = (feld) => mitWerten.reduce((s, x) => s + x[feld], 0) / mitWerten.length;
+  const g = { eiweiss: mittel('eiweiss'), fett: mittel('fett'), kh: mittel('kh') };
+  const kcalGesamt = g.eiweiss * 4 + g.fett * 9 + g.kh * 4;
+
+  [['eiweiss','Eiweiß'], ['fett','Fett'], ['kh','Kohlenhydrate']].forEach(([id, name]) => {
+    const stat = bau('div', 'stat');
+    const kopf = bau('div', 'kopf');
+    kopf.appendChild(bau('span', 'punkt v-' + id));
+    kopf.appendChild(bau('span', null, name));
+    kopf.querySelector('span:last-child').style.fontSize = '11.5px';
+    stat.appendChild(kopf);
+    stat.appendChild(bau('b', null, Math.round(g[id]) + ' g'));
+    const anteil = kcalGesamt > 0
+      ? Math.round((g[id] * (id === 'fett' ? 9 : 4)) / kcalGesamt * 100) : 0;
+    stat.appendChild(bau('span', null, 'Ø pro Tag · ' + anteil + ' %'));
+    schnitt.appendChild(stat);
+  });
 }
 
 function tagesDaten(anzahl){
@@ -329,9 +414,11 @@ function tagesDaten(anzahl){
   for (let i = anzahl - 1; i >= 0; i--){
     const datum = tageDazu(heuteStr(), -i);
     const d = ausDatumStr(datum);
+    const summe = summeVon(eintraegeVon(datum));
     liste.push({
       datum,
-      kcal: summeVon(eintraegeVon(datum)).kcal,
+      kcal: summe.kcal,
+      eiweiss: summe.eiweiss, fett: summe.fett, kh: summe.kh,
       label: datumLesbar(datum),
       kurz: anzahl <= 7 ? WOCHENTAGE[d.getDay()] : (d.getDate() % 5 === 0 ? String(d.getDate()) : '')
     });
@@ -347,9 +434,12 @@ function monatsDaten(){
     const praefix = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
     const treffer = eintraege.filter(x => x.datum.startsWith(praefix));
     const tage = new Set(treffer.map(x => x.datum)).size;
+    const summe = summeVon(treffer);
+    const proTag = (wert) => tage ? wert / tage : 0;
     liste.push({
       datum: praefix,
-      kcal: tage ? summeVon(treffer).kcal / tage : 0,
+      kcal: proTag(summe.kcal),
+      eiweiss: proTag(summe.eiweiss), fett: proTag(summe.fett), kh: proTag(summe.kh),
       label: MONATE[d.getMonth()] + ' ' + d.getFullYear(),
       kurz: MONATE[d.getMonth()].slice(0, 3)
     });

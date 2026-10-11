@@ -50,6 +50,8 @@ zusätzlich schraffiert, und im Tagesring steht im Klartext, wie viel du drüber
 - Tagesansicht mit Kalorienring, Eiweiß/Fett/Kohlenhydraten und einem Balken, der zeigt,
   **woraus die Kalorien kamen** (Anteile der drei Nährstoffe, mit Richtwert zum Vergleich)
 - Verlauf über **Woche, Monat und Jahr** als Diagramm, mit Ziellinie und Durchschnitt
+- Im Verlauf eine zweite Grafik **„Woraus die Kalorien kamen"**: je Tag ein gestapelter
+  Balken aus Eiweiß, Fett und Kohlenhydraten, darunter der Schnitt in Gramm und Prozent
 - Protokoll der letzten Tage, ein Tippen springt zu dem Tag
 - **CSV-Export** aller Einträge (Semikolon und Komma, öffnet direkt in Excel)
 

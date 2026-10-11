@@ -94,6 +94,20 @@ hinken dem Rendern ebenfalls hinterher: ein Bild mitten in der Animation zeigt b
 Ringe gleich weit und sieht dann nach „alles rot" aus. Im Zweifel den Screenshot ohne
 weitere Änderung wiederholen.
 
+### Nährstoffe (seit v1.6/v1.7)
+An zwei Stellen, beide über die **Brennwerte** gerechnet (Eiweiß und Kohlenhydrate
+4 kcal/g, Fett 9 kcal/g) – nie über `kcal` des Eintrags, sonst gingen Rundungen und
+Alkohol in die Anteile ein:
+- **Heute** (`renderVerteilung`): ein gestapelter Balken mit den Anteilen des Tages.
+- **Verlauf** (`renderNaehrstoffe`): je Tag bzw. Monat ein gestapelter Balken plus
+  Schnitt in Gramm und Prozent. `tagesDaten`/`monatsDaten` liefern dafür neben `kcal`
+  auch `eiweiss`/`fett`/`kh`.
+
+Die Abschnitte tragen `v-eiweiss` / `v-fett` / `v-kh` – diese Klassen bringen **Farbe
+und Muster** mit (glatt, schraffiert, gegenschraffiert). Die Punkte der Legende nutzen
+dieselben Klassen, damit die Zuordnung ohne Farbunterscheidung funktioniert; die
+Farbregeln dürfen deshalb **nicht** an einen Elternselektor gebunden werden.
+
 ### Alter und Geburtsdatum (seit v1.6)
 Im Profil steht ein **Geburtsdatum** (`profil.geburtstag`, ISO), aus dem
 `alterAusGeburtstag` das Alter rechnet – so läuft es von allein weiter. Profile von
