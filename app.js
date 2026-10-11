@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 
-const APP_VERSION = '1.7';
+const APP_VERSION = '1.8';
 
 /* ---------- Speicherschlüssel ---------- */
 const SP = {
@@ -322,7 +322,89 @@ function renderVerlauf(){
   }
 
   renderNaehrstoffe(daten);
+  renderAbweichung(daten, ziel);
   renderProtokoll();
+}
+
+/* Abweichung vom Richtwert je Nährstoff über den Zeitraum. Ein Balken
+   nach oben heißt mehr als empfohlen, einer nach unten weniger – die
+   Richtung trägt die Aussage, damit sie nicht an Farben hängt.
+   Tage ohne Eintrag bleiben leer: fehlende Daten sind kein Defizit. */
+function renderAbweichung(daten, ziel){
+  const inhalt = $('abw-inhalt');
+  inhalt.textContent = '';
+
+  const zw = makroZiele(ziel);
+  if (!zw){
+    inhalt.appendChild(bau('p', 'abw-hinweis',
+      'Dafür fehlt dein Tagesziel – trag dein Profil ein, dann steht hier, wo du über und unter dem Richtwert liegst.'));
+    return;
+  }
+
+  const erfasst = daten.filter(x => (x.eiweiss + x.fett + x.kh) > 0.5);
+  if (!erfasst.length){
+    inhalt.appendChild(bau('p', 'abw-hinweis', 'Noch keine Nährwerte in diesem Zeitraum erfasst.'));
+    return;
+  }
+
+  for (const [id, name] of [['eiweiss','Eiweiß'], ['fett','Fett'], ['kh','Kohlenhydrate']]){
+    const sollWert = zw[id];
+    const abweichungen = daten.map(x =>
+      (x.eiweiss + x.fett + x.kh) > 0.5 ? x[id] - sollWert : null);
+
+    // Maßstab: der größte Ausschlag in beide Richtungen
+    const groesste = Math.max(...abweichungen.filter(a => a !== null).map(Math.abs), 1);
+    const schnitt = abweichungen.filter(a => a !== null)
+      .reduce((s, a) => s + a, 0) / erfasst.length;
+
+    const zeile = bau('div', 'abw-zeile');
+
+    const kopf = bau('div', 'abw-kopf');
+    kopf.appendChild(bau('span', 'punkt v-' + id));
+    kopf.appendChild(bau('span', 'name', name));
+    kopf.appendChild(bau('span', 'ziel', 'Richtwert ' + sollWert + ' g'));
+    const wert = bau('b', null, (schnitt >= 0 ? '+' : '−') + Math.round(Math.abs(schnitt)) + ' g');
+    wert.title = 'Durchschnittliche Abweichung pro erfasstem Tag';
+    kopf.appendChild(wert);
+    zeile.appendChild(kopf);
+
+    const plot = bau('div', 'abw-plot');
+    plot.appendChild(bau('div', 'abw-null'));
+
+    daten.forEach((tag, i) => {
+      const abw = abweichungen[i];
+      const sp = bau('div', 'abw-sp');
+      const oben  = bau('div', 'abw-haelfte oben');
+      const unten = bau('div', 'abw-haelfte unten');
+
+      if (abw !== null && Math.abs(abw) >= 0.5){
+        const balken = bau('div', 'abw-bar v-' + id);
+        balken.style.height = Math.max(6, Math.abs(abw) / groesste * 100) + '%';
+        (abw > 0 ? oben : unten).appendChild(balken);
+        sp.title = tag.label + ': ' + (abw > 0 ? '+' : '−')
+          + Math.round(Math.abs(abw)) + ' g ' + name
+          + ' (' + Math.round(tag[id]) + ' von ' + sollWert + ' g)';
+      }
+
+      sp.appendChild(oben);
+      sp.appendChild(unten);
+      plot.appendChild(sp);
+    });
+
+    zeile.appendChild(plot);
+    inhalt.appendChild(zeile);
+  }
+
+  // Zeitachse einmal unter allen drei Zeilen – sie teilen sie sich
+  const achse = bau('div', 'abw-achse');
+  for (const tag of daten) achse.appendChild(bau('div', 'bl', tag.kurz));
+  inhalt.appendChild(achse);
+
+  const fuss = bau('p', 'abw-fuss');
+  fuss.textContent = 'Nach oben mehr als empfohlen, nach unten weniger. '
+    + 'Die Richtwerte verteilen dein Tagesziel von ' + ziel + ' kcal auf 20 % Eiweiß, '
+    + '30 % Fett und 50 % Kohlenhydrate.';
+  inhalt.appendChild(fuss);
 }
 
 /* Nährstoffe über den gewählten Zeitraum: je Tag (bzw. Monat) ein

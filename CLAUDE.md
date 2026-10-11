@@ -103,6 +103,13 @@ Alkohol in die Anteile ein:
   Schnitt in Gramm und Prozent. `tagesDaten`/`monatsDaten` liefern dafür neben `kcal`
   auch `eiweiss`/`fett`/`kh`.
 
+Dazu im Verlauf **„Über und unter dem Richtwert"** (`renderAbweichung`): je Nährstoff
+ein Verlauf um eine Nulllinie, `ist − makroZiele()[nährstoff]` je Tag. **Die Richtung
+trägt die Aussage** (oben zu viel, unten zu wenig), nicht die Farbe; Defizitbalken sind
+zusätzlich blasser. Tage ohne Eintrag bleiben leer – fehlende Daten sind kein Defizit,
+und der Schnitt rechnet nur über erfasste Tage. Ohne Tagesziel steht dort ein Hinweis
+statt eines leeren Diagramms.
+
 Die Abschnitte tragen `v-eiweiss` / `v-fett` / `v-kh` – diese Klassen bringen **Farbe
 und Muster** mit (glatt, schraffiert, gegenschraffiert). Die Punkte der Legende nutzen
 dieselben Klassen, damit die Zuordnung ohne Farbunterscheidung funktioniert; die
