@@ -52,8 +52,9 @@ zusätzlich schraffiert, und im Tagesring steht im Klartext, wie viel du drüber
 - Verlauf über **Woche, Monat und Jahr** als Diagramm, mit Ziellinie und Durchschnitt
 - Im Verlauf eine zweite Grafik **„Woraus die Kalorien kamen"**: je Tag ein gestapelter
   Balken aus Eiweiß, Fett und Kohlenhydraten, darunter der Schnitt in Gramm und Prozent
-- Und **„Über und unter dem Richtwert"**: je Nährstoff ein Verlauf um eine Nulllinie –
-  nach oben mehr als empfohlen, nach unten weniger, dazu der Schnitt pro Tag
+- Und **„Nährstoffe gegen den Richtwert"**: je Nährstoff ein eigenes Diagramm, gebaut
+  wie das Kaloriendiagramm – Balken pro Tag, gestrichelte Richtwertlinie, darunter die
+  Bilanz in Gramm und Prozent
 - Protokoll der letzten Tage, ein Tippen springt zu dem Tag
 - **CSV-Export** aller Einträge (Semikolon und Komma, öffnet direkt in Excel)
 

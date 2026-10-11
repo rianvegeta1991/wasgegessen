@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 
-const APP_VERSION = '1.9';
+const APP_VERSION = '1.10';
 
 /* ---------- Speicherschlüssel ---------- */
 const SP = {
@@ -335,10 +335,13 @@ function renderVerlauf(){
   renderProtokoll();
 }
 
-/* Abweichung vom Richtwert je Nährstoff über den Zeitraum. Ein Balken
-   nach oben heißt mehr als empfohlen, einer nach unten weniger – die
-   Richtung trägt die Aussage, damit sie nicht an Farben hängt.
-   Tage ohne Eintrag bleiben leer: fehlende Daten sind kein Defizit. */
+/* Je Nährstoff ein eigenes Diagramm, aufgebaut wie das Kaloriendiagramm
+   darüber: absolute Balken je Tag und eine gestrichelte Linie für den
+   Richtwert. Balken über dem Richtwert stehen in voller Deckkraft, die
+   darunter zurückgenommen – die Linie zeigt die Richtung, nicht die
+   Farbe. Darunter die Bilanz in Gramm und Prozent. */
+const ABW_MAX = 86;   // Höhe der Balkenfläche in Pixeln
+
 function renderAbweichung(daten, ziel){
   const inhalt = $('abw-inhalt');
   inhalt.textContent = '';
@@ -346,7 +349,7 @@ function renderAbweichung(daten, ziel){
   const zw = makroZiele(ziel);
   if (!zw){
     inhalt.appendChild(bau('p', 'abw-hinweis',
-      'Dafür fehlt dein Tagesziel – trag dein Profil ein, dann steht hier, wo du über und unter dem Richtwert liegst.'));
+      'Dafür fehlt dein Tagesziel – trag dein Profil ein, dann stehen hier die Richtwerte je Nährstoff.'));
     return;
   }
 
@@ -358,67 +361,83 @@ function renderAbweichung(daten, ziel){
 
   for (const [id, name] of [['eiweiss','Eiweiß'], ['fett','Fett'], ['kh','Kohlenhydrate']]){
     const sollWert = zw[id];
-    const abweichungen = daten.map(x =>
-      (x.eiweiss + x.fett + x.kh) > 0.5 ? x[id] - sollWert : null);
-
-    // Maßstab: der größte Ausschlag in beide Richtungen
-    const groesste = Math.max(...abweichungen.filter(a => a !== null).map(Math.abs), 1);
-    const schnitt = abweichungen.filter(a => a !== null)
-      .reduce((s, a) => s + a, 0) / erfasst.length;
+    const schnitt = erfasst.reduce((s, x) => s + x[id], 0) / erfasst.length;
+    const abw = schnitt - sollWert;
+    const prozent = sollWert > 0 ? Math.round(Math.abs(abw) / sollWert * 100) : 0;
+    const hoechst = Math.max(sollWert, ...daten.map(x => x[id]), 1) * 1.1;
 
     const zeile = bau('div', 'abw-zeile');
 
+    // Kopf: Name, Richtwert und der Schnitt pro Tag
     const kopf = bau('div', 'abw-kopf');
     kopf.appendChild(bau('span', 'punkt v-' + id));
     kopf.appendChild(bau('span', 'name', name));
-    kopf.appendChild(bau('span', 'ziel', 'Richtwert ' + sollWert + ' g'));
-
-    const zeichen = schnitt >= 0 ? '+' : '−';
-    const prozent = sollWert > 0 ? Math.round(Math.abs(schnitt) / sollWert * 100) : 0;
-    const wert = bau('b', null, zeichen + Math.round(Math.abs(schnitt)) + ' g');
-    wert.appendChild(bau('span', 'abw-prozent', ' ' + zeichen + prozent + ' %'));
-    wert.title = 'Durchschnittliche Abweichung pro erfasstem Tag';
+    kopf.appendChild(bau('span', 'einheit', 'Richtwert ' + sollWert + ' g'));
+    const wert = bau('b', null, Math.round(schnitt) + ' g');
+    wert.appendChild(bau('span', 'abw-prozent', ' Ø pro Tag'));
     kopf.appendChild(wert);
     zeile.appendChild(kopf);
 
+    // Richtwertlinie – dieselbe Technik wie die Ziellinie beim Kaloriendiagramm
+    const linie = bau('div', 'ziel-linie');
+    const strich = document.createElement('i');
+    const marke = document.createElement('b');
+    marke.textContent = sollWert + ' g';
+    const y = 4 + ABW_MAX - (sollWert / hoechst) * ABW_MAX;
+    strich.style.top = y + 'px';
+    marke.style.top = y + 'px';
+    linie.appendChild(strich);
+    linie.appendChild(marke);
+    zeile.appendChild(linie);
+
     const plot = bau('div', 'abw-plot');
-    plot.appendChild(bau('div', 'abw-null'));
-
-    daten.forEach((tag, i) => {
-      const abw = abweichungen[i];
+    for (const tag of daten){
+      const wertTag = tag[id];
+      const hatEintrag = (tag.eiweiss + tag.fett + tag.kh) > 0.5;
       const sp = bau('div', 'abw-sp');
-      const oben  = bau('div', 'abw-haelfte oben');
-      const unten = bau('div', 'abw-haelfte unten');
+      const balken = bau('div', 'abw-bar');
 
-      if (abw !== null && Math.abs(abw) >= 0.5){
-        const balken = bau('div', 'abw-bar v-' + id);
-        balken.style.height = Math.max(6, Math.abs(abw) / groesste * 100) + '%';
-        (abw > 0 ? oben : unten).appendChild(balken);
-        const vz = abw > 0 ? '+' : '−';
-        const proz = sollWert > 0 ? Math.round(Math.abs(abw) / sollWert * 100) : 0;
-        sp.title = tag.label + ': ' + vz + Math.round(Math.abs(abw)) + ' g '
-          + name + ' (' + vz + proz + ' %, '
-          + Math.round(tag[id]) + ' von ' + sollWert + ' g)';
+      if (!hatEintrag){
+        balken.classList.add('leer-tag');
+        balken.style.height = '2px';
+      } else {
+        balken.classList.add('v-' + id);
+        if (wertTag < sollWert) balken.classList.add('drunter');
+        balken.style.height = Math.max(3, (wertTag / hoechst) * ABW_MAX) + 'px';
+
+        const diff = wertTag - sollWert;
+        const vz = diff >= 0 ? '+' : '−';
+        const dProz = sollWert > 0 ? Math.round(Math.abs(diff) / sollWert * 100) : 0;
+        sp.title = tag.label + ': ' + Math.round(wertTag) + ' g ' + name
+          + ' · ' + vz + Math.round(Math.abs(diff)) + ' g (' + vz + dProz + ' %) '
+          + (diff >= 0 ? 'über' : 'unter') + ' dem Richtwert von ' + sollWert + ' g';
       }
 
-      sp.appendChild(oben);
-      sp.appendChild(unten);
+      sp.appendChild(balken);
       plot.appendChild(sp);
-    });
-
+    }
     zeile.appendChild(plot);
+
+    const achse = bau('div', 'abw-achse');
+    for (const tag of daten) achse.appendChild(bau('div', 'bl', tag.kurz));
+    zeile.appendChild(achse);
+
+    // Bilanz: absolut und relativ
+    const bilanz = bau('div', 'abw-bilanz');
+    const zeichen = abw >= 0 ? '+' : '−';
+    bilanz.appendChild(text('Im Schnitt '));
+    bilanz.appendChild(bau('b', null, zeichen + Math.round(Math.abs(abw)) + ' g ('
+      + zeichen + prozent + ' %)'));
+    bilanz.appendChild(text(abw >= 0 ? ' über dem Richtwert' : ' unter dem Richtwert'));
+    zeile.appendChild(bilanz);
+
     inhalt.appendChild(zeile);
   }
 
-  // Zeitachse einmal unter allen drei Zeilen – sie teilen sie sich
-  const achse = bau('div', 'abw-achse');
-  for (const tag of daten) achse.appendChild(bau('div', 'bl', tag.kurz));
-  inhalt.appendChild(achse);
-
   const fuss = bau('p', 'abw-fuss');
-  fuss.textContent = 'Nach oben mehr als empfohlen, nach unten weniger. '
-    + 'Die Richtwerte verteilen dein Tagesziel von ' + ziel + ' kcal auf 20 % Eiweiß, '
-    + '30 % Fett und 50 % Kohlenhydrate.';
+  fuss.textContent = 'Die Richtwerte verteilen dein Tagesziel von ' + ziel
+    + ' kcal auf 20 % Eiweiß, 30 % Fett und 50 % Kohlenhydrate. '
+    + 'Volle Balken liegen über dem Richtwert, blasse darunter.';
   inhalt.appendChild(fuss);
 }
 
