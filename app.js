@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 
-const APP_VERSION = '1.8';
+const APP_VERSION = '1.9';
 
 /* ---------- Speicherschlüssel ---------- */
 const SP = {
@@ -279,8 +279,14 @@ function renderVerlauf(){
   const ziel = tagesZiel(profil);
   const daten = aktZeitraum === 'jahr' ? monatsDaten() : tagesDaten(aktZeitraum === 'woche' ? 7 : 30);
 
-  $('verlauf-titel').textContent = aktZeitraum === 'woche' ? 'Letzte 7 Tage'
-    : aktZeitraum === 'monat' ? 'Letzte 30 Tage' : 'Letzte 12 Monate';
+  // Reicht die Erfassung noch nicht über den ganzen Zeitraum, nennt die
+  // Überschrift das, statt Tage zu versprechen, die gar nicht da sind.
+  const voll = aktZeitraum === 'woche' ? 7 : aktZeitraum === 'monat' ? 30 : 12;
+  const einheit = aktZeitraum === 'jahr' ? 'Monate' : 'Tage';
+  $('verlauf-titel').textContent = daten.length >= voll
+    ? 'Letzte ' + voll + ' ' + einheit
+    : 'Seit dem ersten Eintrag · ' + daten.length + ' '
+      + (daten.length === 1 ? einheit.slice(0, -1) : einheit);
 
   const werte = daten.map(x => x.kcal);
   const hoechst = Math.max(ziel || 0, ...werte, 1) * 1.1;
@@ -316,7 +322,10 @@ function renderVerlauf(){
   $('st-tage').textContent = erfasst.length + ' / ' + daten.length;
   if (ziel && erfasst.length){
     const diff = Math.round(schnitt - ziel);
-    $('st-bilanz').textContent = (diff > 0 ? '+' : '') + diff;
+    const proz = Math.round(Math.abs(diff) / ziel * 100);
+    $('st-bilanz').textContent = (diff > 0 ? '+' : diff < 0 ? '−' : '') + Math.abs(diff);
+    $('st-bilanz').appendChild(bau('span', 'abw-prozent',
+      ' ' + (diff > 0 ? '+' : diff < 0 ? '−' : '') + proz + ' %'));
   } else {
     $('st-bilanz').textContent = '–';
   }
@@ -363,7 +372,11 @@ function renderAbweichung(daten, ziel){
     kopf.appendChild(bau('span', 'punkt v-' + id));
     kopf.appendChild(bau('span', 'name', name));
     kopf.appendChild(bau('span', 'ziel', 'Richtwert ' + sollWert + ' g'));
-    const wert = bau('b', null, (schnitt >= 0 ? '+' : '−') + Math.round(Math.abs(schnitt)) + ' g');
+
+    const zeichen = schnitt >= 0 ? '+' : '−';
+    const prozent = sollWert > 0 ? Math.round(Math.abs(schnitt) / sollWert * 100) : 0;
+    const wert = bau('b', null, zeichen + Math.round(Math.abs(schnitt)) + ' g');
+    wert.appendChild(bau('span', 'abw-prozent', ' ' + zeichen + prozent + ' %'));
     wert.title = 'Durchschnittliche Abweichung pro erfasstem Tag';
     kopf.appendChild(wert);
     zeile.appendChild(kopf);
@@ -381,9 +394,11 @@ function renderAbweichung(daten, ziel){
         const balken = bau('div', 'abw-bar v-' + id);
         balken.style.height = Math.max(6, Math.abs(abw) / groesste * 100) + '%';
         (abw > 0 ? oben : unten).appendChild(balken);
-        sp.title = tag.label + ': ' + (abw > 0 ? '+' : '−')
-          + Math.round(Math.abs(abw)) + ' g ' + name
-          + ' (' + Math.round(tag[id]) + ' von ' + sollWert + ' g)';
+        const vz = abw > 0 ? '+' : '−';
+        const proz = sollWert > 0 ? Math.round(Math.abs(abw) / sollWert * 100) : 0;
+        sp.title = tag.label + ': ' + vz + Math.round(Math.abs(abw)) + ' g '
+          + name + ' (' + vz + proz + ' %, '
+          + Math.round(tag[id]) + ' von ' + sollWert + ' g)';
       }
 
       sp.appendChild(oben);
@@ -491,10 +506,20 @@ function renderNaehrstoffe(daten){
   });
 }
 
+/* Der erste Tag, an dem überhaupt etwas eingetragen wurde.
+   Was davor liegt, ist keine Lücke, sondern Zeit vor der Nutzung –
+   und taucht im Verlauf deshalb gar nicht erst auf. */
+function ersterEintragstag(){
+  if (!eintraege.length) return null;
+  return eintraege.reduce((frueh, x) => x.datum < frueh ? x.datum : frueh, eintraege[0].datum);
+}
+
 function tagesDaten(anzahl){
   const liste = [];
+  const start = ersterEintragstag();
   for (let i = anzahl - 1; i >= 0; i--){
     const datum = tageDazu(heuteStr(), -i);
+    if (start && datum < start) continue;
     const d = ausDatumStr(datum);
     const summe = summeVon(eintraegeVon(datum));
     liste.push({
@@ -502,8 +527,18 @@ function tagesDaten(anzahl){
       kcal: summe.kcal,
       eiweiss: summe.eiweiss, fett: summe.fett, kh: summe.kh,
       label: datumLesbar(datum),
-      kurz: anzahl <= 7 ? WOCHENTAGE[d.getDay()] : (d.getDate() % 5 === 0 ? String(d.getDate()) : '')
+      kurz: ''
     });
+  }
+
+  // Beschriftung nach der Zahl der wirklich gezeigten Tage, nicht nach dem
+  // gewählten Zeitraum: wer die App seit drei Tagen nutzt, sieht in der
+  // Monatsansicht drei Spalten – die sollen alle beschriftet sein.
+  const alleBeschriften = liste.length <= 10;
+  for (const x of liste){
+    const d = ausDatumStr(x.datum);
+    x.kurz = alleBeschriften ? WOCHENTAGE[d.getDay()]
+      : (d.getDate() % 5 === 0 ? String(d.getDate()) : '');
   }
   return liste;
 }
@@ -511,9 +546,12 @@ function tagesDaten(anzahl){
 function monatsDaten(){
   const liste = [];
   const jetzt = new Date();
+  const start = ersterEintragstag();
+  const startMonat = start ? start.slice(0, 7) : null;
   for (let i = 11; i >= 0; i--){
     const d = new Date(jetzt.getFullYear(), jetzt.getMonth() - i, 1);
     const praefix = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    if (startMonat && praefix < startMonat) continue;
     const treffer = eintraege.filter(x => x.datum.startsWith(praefix));
     const tage = new Set(treffer.map(x => x.datum)).size;
     const summe = summeVon(treffer);

@@ -1,16 +1,16 @@
 /* WasGegessen? – Service Worker (Offline-Betrieb)
  * Bei Dateiänderungen die Versionsnummer hochzählen. */
-const CACHE = 'wasgegessen-v10';
+const CACHE = 'wasgegessen-v11';
 const ASSETS = [
   './',
   './index.html',
   // mit derselben Versionsnummer wie in index.html, sonst landen die
   // Skripte doppelt im Cache und die Seite holt sie trotzdem aus dem Netz
-  './daten.js?v=1.8',
-  './grundnahrung.js?v=1.8',
-  './off.js?v=1.8',
-  './vision.js?v=1.8',
-  './app.js?v=1.8',
+  './daten.js?v=1.9',
+  './grundnahrung.js?v=1.9',
+  './off.js?v=1.9',
+  './vision.js?v=1.9',
+  './app.js?v=1.9',
   './manifest.webmanifest',
   './icon.svg',
   './icon-maskable.svg',

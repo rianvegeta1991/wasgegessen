@@ -279,8 +279,9 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
 .naehr-tabelle tr:last-child td{border-bottom:0}
 
 /* ---------- Verlauf ---------- */
-.diagramm{display:flex;align-items:flex-end;gap:3px;height:150px;margin:6px 0 4px;position:relative}
-.balken-sp{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:4px}
+.diagramm{display:flex;align-items:flex-end;justify-content:center;gap:3px;height:150px;margin:6px 0 4px;position:relative}
+/* Obergrenze, damit die Balken bei wenigen Tagen nicht klobig werden */
+.balken-sp{flex:1;min-width:0;max-width:54px;display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:4px}
 .balken{width:100%;border-radius:4px 4px 2px 2px;background:var(--akzent);min-height:2px;transition:height .3s}
 /* Zusätzlich zur Farbe eine Schraffur: so sind die Tage über dem Ziel auch
    dann zu erkennen, wenn sich Rot und Grün nicht auseinanderhalten lassen. */
@@ -320,17 +321,19 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
 .abw-kopf .ziel{font-size:11.5px;color:var(--leise);white-space:nowrap}
 /* Zwei gleich hohe Hälften mit der Nulllinie dazwischen: oben wächst der
    Überschuss nach oben, unten das Defizit nach unten. */
-.abw-plot{display:flex;gap:3px;height:54px;position:relative}
+.abw-plot{display:flex;justify-content:center;gap:3px;height:54px;position:relative}
 .abw-null{position:absolute;left:0;right:0;top:50%;border-top:1px solid var(--rand)}
-.abw-sp{flex:1;min-width:0;display:flex;flex-direction:column}
+.abw-sp{flex:1;min-width:0;max-width:54px;display:flex;flex-direction:column}
 .abw-haelfte{flex:1;display:flex;overflow:hidden}
 .abw-haelfte.oben{align-items:flex-end}
 .abw-haelfte.unten{align-items:flex-start}
 .abw-bar{width:100%;min-height:0;border-radius:2px}
 .abw-haelfte.oben .abw-bar{border-radius:2px 2px 0 0}
 .abw-haelfte.unten .abw-bar{border-radius:0 0 2px 2px;opacity:.55}
-.abw-achse{display:flex;gap:3px;margin-top:4px}
-.abw-achse .bl{flex:1;min-width:0;font-size:9.5px;color:var(--leise);text-align:center;white-space:nowrap;overflow:hidden}
+/* Prozent steht neben dem Gramm-Wert, etwas zurückgenommen */
+.abw-prozent{font-size:.78em;font-weight:500;color:var(--leise);margin-left:2px}
+.abw-achse{display:flex;justify-content:center;gap:3px;margin-top:4px}
+.abw-achse .bl{flex:1;min-width:0;max-width:54px;font-size:9.5px;color:var(--leise);text-align:center;white-space:nowrap;overflow:hidden}
 .abw-hinweis{padding:16px 4px;text-align:center;color:var(--leise);font-size:13.5px}
 .abw-fuss{font-size:11.5px;color:var(--leise);margin-top:12px;padding-top:11px;border-top:1px solid var(--rand)}
 
@@ -752,10 +755,10 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
 <!-- Die Versionsnummer an den Skripten erzwingt frische Dateien nach einem Update.
      Bei einer neuen Version hier, in APP_VERSION (app.js) und in den ASSETS
      des Service Workers dieselbe Nummer eintragen. -->
-<script src="daten.js?v=1.8"></script>
-<script src="grundnahrung.js?v=1.8"></script>
-<script src="off.js?v=1.8"></script>
-<script src="vision.js?v=1.8"></script>
-<script src="app.js?v=1.8"></script>
+<script src="daten.js?v=1.9"></script>
+<script src="grundnahrung.js?v=1.9"></script>
+<script src="off.js?v=1.9"></script>
+<script src="vision.js?v=1.9"></script>
+<script src="app.js?v=1.9"></script>
 </body>
 </html>
