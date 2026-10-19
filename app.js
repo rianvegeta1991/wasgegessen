@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 
-const APP_VERSION = '1.10';
+const APP_VERSION = '1.11';
 
 /* ---------- Speicherschlüssel ---------- */
 const SP = {
@@ -13,6 +13,7 @@ const SP = {
   eintraege: 'wasgegessen-eintraege',
   eigene:    'wasgegessen-eigene',
   zuletzt:   'wasgegessen-zuletzt',
+  gewicht:   'wasgegessen-gewicht',
   key:       'wasgegessen-key',
   modell:    'wasgegessen-modell'
 };
@@ -73,10 +74,15 @@ function datumLesbar(s){
 }
 
 /* ---------- Zustand ---------- */
-let profil    = lade(SP.profil, { groesse:null, gewicht:null, alter:null, geburtstag:null, geschlecht:null, aktivitaet:'leicht', zielManuell:null });
+let profil    = lade(SP.profil, { groesse:null, gewicht:null, alter:null, geburtstag:null, geschlecht:null, aktivitaet:'leicht', zielManuell:null, zielGewicht:null });
 let eintraege = lade(SP.eintraege, []);
 let eigene    = lade(SP.eigene, []);
 let zuletzt   = lade(SP.zuletzt, []);
+let gewichte  = lade(SP.gewicht, []);   // [{datum, kg}], aufsteigend
+
+/* Für welchen Tag die Wiege-Erinnerung weggelegt wurde (nur diese Sitzung
+   bzw. dieser Tag – morgen fragt sie wieder) */
+let wiegenVertagt = null;
 
 let aktDatum  = heuteStr();
 let aktScreen = 'heute';
@@ -157,6 +163,187 @@ function renderHeute(){
   renderVerteilung(summe);
 
   renderMahlzeiten(liste);
+  renderWiegeKarte();
+}
+
+/* ============================================================
+   Gewicht
+   ============================================================ */
+function gewichtVon(datum){
+  const treffer = gewichte.find(g => g.datum === datum);
+  return treffer ? treffer.kg : null;
+}
+
+function gewichtSetzen(datum, kg){
+  const i = gewichte.findIndex(g => g.datum === datum);
+  if (i >= 0) gewichte[i].kg = kg;
+  else gewichte.push({ datum, kg });
+  gewichte.sort((a, b) => a.datum.localeCompare(b.datum));
+  sichere(SP.gewicht, gewichte);
+
+  // Das jüngste Gewicht ist auch das Profilgewicht – der Grundumsatz
+  // soll mitwandern, wenn sich das Gewicht ändert.
+  const juengstes = gewichte[gewichte.length - 1];
+  if (juengstes && juengstes.datum >= datum){
+    profil.gewicht = juengstes.kg;
+    sichere(SP.profil, profil);
+  }
+}
+
+/* Die Erinnerung erscheint an Wiegetagen, solange für heute nichts
+   eingetragen und sie nicht weggelegt wurde. */
+function renderWiegeKarte(){
+  const karte = $('wiege-karte');
+  const heute = heuteStr();
+  const faellig = aktDatum === heute
+    && istWiegetag(heute)
+    && gewichtVon(heute) === null
+    && wiegenVertagt !== heute;
+
+  karte.hidden = !faellig;
+  if (!faellig) return;
+
+  const letztes = gewichte[gewichte.length - 1];
+  $('wiege-sub').textContent = letztes
+    ? 'Zuletzt ' + mengeText(letztes.kg) + ' kg am ' + datumLesbar(letztes.datum) + '.'
+    : 'Zweimal die Woche reicht, um den Verlauf zu sehen.';
+  $('wiege-feld').value = '';
+}
+
+function wiegenEintragen(){
+  const kg = zahlOderNull($('wiege-feld').value);
+  if (kg === null || kg < 20 || kg > 400){
+    toast('Bitte ein Gewicht zwischen 20 und 400 kg angeben.');
+    return;
+  }
+  gewichtSetzen(heuteStr(), Math.round(kg * 10) / 10);
+  renderWiegeKarte();
+  renderProfil();
+  renderHeute();
+  toast('Gewicht eingetragen');
+}
+
+/* Kurve über die letzten Wiegungen, mit Zielgewicht als Linie */
+function renderGewicht(){
+  const inhalt = $('gewicht-inhalt');
+  inhalt.textContent = '';
+
+  if (!gewichte.length){
+    const hinweis = bau('p', 'abw-hinweis',
+      'Noch kein Gewicht erfasst. Mittwochs und samstags fragt die App auf der Heute-Seite danach – eintragen kannst du es jederzeit im Profil.');
+    inhalt.appendChild(hinweis);
+    return;
+  }
+
+  // Zeitraum wie im übrigen Verlauf begrenzen
+  const tage = aktZeitraum === 'woche' ? 7 : aktZeitraum === 'monat' ? 30 : 365;
+  const ab = tageDazu(heuteStr(), -(tage - 1));
+  let punkte = gewichte.filter(g => g.datum >= ab);
+  // Mindestens die letzten beiden zeigen, damit nie ein leeres Feld steht
+  if (punkte.length < 2) punkte = gewichte.slice(-2);
+
+  const aktuell = gewichte[gewichte.length - 1];
+  const ziel = profil.zielGewicht;
+
+  const kopf = bau('div', 'gew-kopf');
+  const wert = bau('b', null, mengeText(aktuell.kg) + ' kg');
+  kopf.appendChild(wert);
+  kopf.appendChild(bau('span', 'leise', 'am ' + datumLesbar(aktuell.datum)));
+
+  // Veränderung gegenüber der ersten gezeigten Wiegung
+  if (punkte.length >= 2){
+    const diff = aktuell.kg - punkte[0].kg;
+    const trend = bau('span', 'trend',
+      (diff > 0 ? '+' : diff < 0 ? '−' : '±') + mengeText(Math.abs(Math.round(diff * 10) / 10)) + ' kg');
+    trend.title = 'Veränderung seit ' + datumLesbar(punkte[0].datum);
+    kopf.appendChild(trend);
+  }
+  inhalt.appendChild(kopf);
+
+  // Kurve als SVG: Werte auf 0–100 normiert, Zielgewicht als Linie
+  const werte = punkte.map(p => p.kg).concat(ziel ? [ziel] : []);
+  const min = Math.min(...werte), max = Math.max(...werte);
+  const spanne = Math.max(max - min, 1);          // nie durch 0 teilen
+  const rand = spanne * 0.15;
+  const unten = min - rand, oben = max + rand;
+  const y = (kg) => 100 - ((kg - unten) / (oben - unten)) * 100;
+  const x = (i) => punkte.length === 1 ? 50 : (i / (punkte.length - 1)) * 100;
+
+  const plot = bau('div', 'gew-plot');
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 100 100');
+  svg.setAttribute('preserveAspectRatio', 'none');
+
+  if (ziel){
+    const linie = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    linie.setAttribute('class', 'gew-ziellinie');
+    linie.setAttribute('x1', 0); linie.setAttribute('x2', 100);
+    linie.setAttribute('y1', y(ziel)); linie.setAttribute('y2', y(ziel));
+    linie.setAttribute('vector-effect', 'non-scaling-stroke');
+    svg.appendChild(linie);
+  }
+
+  const pfad = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  pfad.setAttribute('class', 'gew-linie');
+  pfad.setAttribute('vector-effect', 'non-scaling-stroke');
+  pfad.setAttribute('points', punkte.map((p, i) => x(i) + ',' + y(p.kg)).join(' '));
+  svg.appendChild(pfad);
+
+  punkte.forEach((p, i) => {
+    const kreis = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    kreis.setAttribute('class', 'gew-punkt');
+    kreis.setAttribute('cx', x(i)); kreis.setAttribute('cy', y(p.kg));
+    kreis.setAttribute('r', 3);
+    kreis.setAttribute('vector-effect', 'non-scaling-stroke');
+    const titel = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    titel.textContent = datumLesbar(p.datum) + ': ' + mengeText(p.kg) + ' kg';
+    kreis.appendChild(titel);
+    svg.appendChild(kreis);
+  });
+
+  plot.appendChild(svg);
+  inhalt.appendChild(plot);
+
+  const achse = bau('div', 'gew-achse');
+  achse.appendChild(bau('span', null, kurzDatum(punkte[0].datum)));
+  if (ziel) achse.appendChild(bau('span', null, 'Ziel ' + mengeText(ziel) + ' kg'));
+  achse.appendChild(bau('span', null, kurzDatum(punkte[punkte.length - 1].datum)));
+  inhalt.appendChild(achse);
+
+  if (ziel){
+    const rest = Math.round((aktuell.kg - ziel) * 10) / 10;
+    const fuss = bau('p', 'gew-fuss');
+    fuss.textContent = Math.abs(rest) < 0.05
+      ? 'Du bist auf deinem Zielgewicht.'
+      : (rest > 0 ? 'Noch ' + mengeText(rest) + ' kg bis zum Zielgewicht.'
+                  : mengeText(Math.abs(rest)) + ' kg unter deinem Zielgewicht.');
+    inhalt.appendChild(fuss);
+  }
+
+  // Die letzten Wiegungen zum Nachsehen und Löschen
+  const liste = bau('div', 'gew-liste');
+  for (const g of gewichte.slice(-6).reverse()){
+    const zeile = bau('div', 'gew-eintrag');
+    zeile.appendChild(bau('span', 'datum', datumLesbar(g.datum)));
+    zeile.appendChild(bau('b', null, mengeText(g.kg) + ' kg'));
+    const weg = bau('button', 'weg', '✕');
+    weg.setAttribute('aria-label', 'Wiegung vom ' + datumLesbar(g.datum) + ' löschen');
+    weg.onclick = () => {
+      gewichte = gewichte.filter(x => x.datum !== g.datum);
+      sichere(SP.gewicht, gewichte);
+      renderVerlauf();
+      renderWiegeKarte();
+      toast('Wiegung gelöscht');
+    };
+    zeile.appendChild(weg);
+    liste.appendChild(zeile);
+  }
+  inhalt.appendChild(liste);
+}
+
+function kurzDatum(iso){
+  const d = ausDatumStr(iso);
+  return d.getDate() + '.' + (d.getMonth() + 1) + '.';
 }
 
 function setzeMakro(name, wert, ziel){
@@ -331,6 +518,7 @@ function renderVerlauf(){
   }
 
   renderNaehrstoffe(daten);
+  renderGewicht();
   renderAbweichung(daten, ziel);
   renderProtokoll();
 }
@@ -657,6 +845,13 @@ function renderProfil(){
                     : 'Daraus wird dein Alter berechnet.');
   $('p-aktivitaet').value = profil.aktivitaet;
   $('p-ziel').value = profil.zielManuell || '';
+  $('p-zielgewicht').value = alsText(profil.zielGewicht);
+  $('zielgewicht-hinweis').textContent = profil.zielGewicht && profil.gewicht
+    ? (Math.abs(profil.gewicht - profil.zielGewicht) < 0.05
+        ? 'Du bist auf deinem Zielgewicht.'
+        : 'Von ' + mengeText(profil.gewicht) + ' kg sind es noch '
+          + mengeText(Math.abs(Math.round((profil.gewicht - profil.zielGewicht) * 10) / 10)) + ' kg.')
+    : 'Erscheint als Linie im Gewichtsverlauf.';
   $('aktivitaet-hilfe').textContent = (AKTIVITAET.find(a => a.id === profil.aktivitaet) || {}).hilfe || '';
 
   renderEigeneListe();
@@ -1551,7 +1746,8 @@ function verdrahten(){
     ['p-groesse', 'groesse',     100, 250],
     ['p-gewicht', 'gewicht',      20, 400],
     ['p-alter',   'alter',        10, 120],
-    ['p-ziel',    'zielManuell', 500, 9000]
+    ['p-ziel',    'zielManuell', 500, 9000],
+    ['p-zielgewicht', 'zielGewicht', 20, 400]
   ];
   for (const [id, schluessel, min, max] of zahlenFelder){
     $(id).addEventListener('change', () => {
@@ -1568,6 +1764,22 @@ function verdrahten(){
       profilSpeichern();
     });
   }
+
+  // Ein im Profil geändertes Gewicht ist zugleich eine Wiegung von heute –
+  // sonst stünde es nirgends im Verlauf.
+  $('p-gewicht').addEventListener('change', () => {
+    const kg = zahlOderNull($('p-gewicht').value);
+    if (kg !== null) gewichtSetzen(heuteStr(), Math.round(kg * 10) / 10);
+  });
+
+  $('wiege-sichern').onclick = wiegenEintragen;
+  $('wiege-feld').addEventListener('keydown', ev => {
+    if (ev.key === 'Enter') wiegenEintragen();
+  });
+  $('wiege-spaeter').onclick = () => {
+    wiegenVertagt = heuteStr();
+    renderWiegeKarte();
+  };
 
   $('p-geburtstag').addEventListener('change', () => {
     const wert = $('p-geburtstag').value;

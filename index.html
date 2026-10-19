@@ -144,6 +144,33 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
    die Zuordnung, ohne dass man Farben unterscheiden muss. */
 .punkt{width:11px;height:11px;border-radius:3px;flex:none}
 
+/* ---------- Wiegen ---------- */
+.wiege-karte{border-color:var(--akzent)}
+.wiege-kopf{display:flex;gap:11px;align-items:flex-start}
+.wiege-icon{font-size:22px;line-height:1.2}
+.wiege-kopf b{font-size:14.5px}
+.wiege-kopf p{margin:2px 0 0}
+.wiege-spaeter{width:100%;margin-top:9px;padding:7px;font-size:12.5px;color:var(--leise)}
+
+/* ---------- Gewichtsverlauf ---------- */
+.gew-kopf{display:flex;align-items:baseline;gap:8px;margin-bottom:2px;font-size:12.5px}
+.gew-kopf b{font-size:19px;font-variant-numeric:tabular-nums;font-weight:700}
+.gew-kopf .trend{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:600}
+.gew-plot{position:relative;height:110px;margin:10px 0 0}
+.gew-plot svg{width:100%;height:100%;display:block;overflow:visible}
+.gew-linie{fill:none;stroke:var(--blau);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.gew-punkt{fill:var(--karte);stroke:var(--blau);stroke-width:2.5}
+.gew-ziellinie{stroke:var(--leise);stroke-width:1.5;stroke-dasharray:4 4;opacity:.6}
+.gew-zielmarke{font-size:10px;fill:var(--leise);font-weight:600}
+.gew-achse{display:flex;justify-content:space-between;font-size:10px;color:var(--leise);margin-top:5px}
+.gew-fuss{font-size:11.5px;color:var(--leise);margin-top:12px;padding-top:11px;border-top:1px solid var(--rand)}
+.gew-liste{margin-top:12px;padding-top:11px;border-top:1px solid var(--rand)}
+.gew-eintrag{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--rand);width:100%;text-align:left;font-size:13px}
+.gew-eintrag:last-child{border-bottom:0}
+.gew-eintrag .datum{flex:1;color:var(--leise)}
+.gew-eintrag b{font-variant-numeric:tabular-nums}
+.gew-eintrag .weg{color:var(--leise);padding:2px 6px;font-size:15px;line-height:1}
+
 /* ---------- Mahlzeiten ---------- */
 .mahlzeit{margin-bottom:14px}
 .mahlzeit-kopf{display:flex;align-items:center;gap:10px;padding:0 4px 8px}
@@ -428,6 +455,22 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
 <main>
   <!-- ===== HEUTE ===== -->
   <section id="s-heute">
+    <!-- Erinnerung ans Wiegen, mittwochs und samstags. Optional:
+         wer nicht mag, legt sie für heute weg. -->
+    <div class="karte wiege-karte" id="wiege-karte" hidden>
+      <div class="wiege-kopf">
+        <span class="wiege-icon">⚖️</span>
+        <div>
+          <b>Wie viel wiegst du heute?</b>
+          <p class="klein leise" id="wiege-sub">Zweimal die Woche reicht, um den Verlauf zu sehen.</p>
+        </div>
+      </div>
+      <div class="feld-reihe" style="margin-top:12px">
+        <input id="wiege-feld" type="text" inputmode="decimal" placeholder="z. B. 78,4">
+        <button class="knopf" id="wiege-sichern" style="max-width:120px">Eintragen</button>
+      </div>
+      <button class="wiege-spaeter" id="wiege-spaeter">Heute nicht</button>
+    </div>
     <div class="karte">
       <div class="ring-box">
         <div class="ring" id="ring">
@@ -508,6 +551,12 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
       <div id="abw-inhalt"></div>
     </div>
 
+    <!-- Gewichtsverlauf: Kurve mit Zielgewicht als Linie -->
+    <div class="karte" id="gewicht-karte">
+      <h2>Gewicht</h2>
+      <div id="gewicht-inhalt"></div>
+    </div>
+
     <div class="karte">
       <h2>Protokoll</h2>
       <div id="protokoll"></div>
@@ -560,6 +609,11 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
         <div class="inhalt">
           <p class="klein leise" style="margin-top:0">Standard ist dein berechneter Gesamtumsatz &ndash; das ist der Wert zum Gewichthalten. Ein eigener Wert überschreibt ihn.</p>
           <div class="feld"><label for="p-ziel">Eigenes Tagesziel (kcal)</label><input id="p-ziel" type="text" inputmode="numeric" placeholder="automatisch"></div>
+          <div class="feld" style="margin-bottom:0">
+            <label for="p-zielgewicht">Zielgewicht (kg)</label>
+            <input id="p-zielgewicht" type="text" inputmode="decimal" placeholder="z. B. 75">
+            <p class="klein leise" id="zielgewicht-hinweis" style="margin:6px 2px 0"></p>
+          </div>
         </div>
       </details>
     </div>
@@ -754,10 +808,10 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
 <!-- Die Versionsnummer an den Skripten erzwingt frische Dateien nach einem Update.
      Bei einer neuen Version hier, in APP_VERSION (app.js) und in den ASSETS
      des Service Workers dieselbe Nummer eintragen. -->
-<script src="daten.js?v=1.10"></script>
-<script src="grundnahrung.js?v=1.10"></script>
-<script src="off.js?v=1.10"></script>
-<script src="vision.js?v=1.10"></script>
-<script src="app.js?v=1.10"></script>
+<script src="daten.js?v=1.11"></script>
+<script src="grundnahrung.js?v=1.11"></script>
+<script src="off.js?v=1.11"></script>
+<script src="vision.js?v=1.11"></script>
+<script src="app.js?v=1.11"></script>
 </body>
 </html>

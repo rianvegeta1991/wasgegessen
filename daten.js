@@ -132,6 +132,22 @@ function portionenFuer(name, fluessig, nurAllgemein){
    Bedarfsrechnung
    ============================================================ */
 
+/* ---------- Gewicht ----------
+   An diesen Wochentagen fragt die App nach dem Gewicht: Mittwoch und
+   Samstag (0 = Sonntag). Zweimal pro Woche glättet die üblichen
+   Tagesschwankungen, ohne zur Pflicht zu werden – eintragen kann man
+   jederzeit, überspringen auch. */
+const WIEGETAGE = [3, 6];
+
+function istWiegetag(datum){
+  return WIEGETAGE.includes(ausDatumLokal(datum).getDay());
+}
+
+function ausDatumLokal(iso){
+  const [j, m, t] = String(iso).split('-').map(Number);
+  return new Date(j, m - 1, t);
+}
+
 /* Alter aus einem Geburtsdatum (ISO: JJJJ-MM-TT).
    Null, wenn das Datum fehlt oder unsinnig ist. */
 function alterAusGeburtstag(iso){
