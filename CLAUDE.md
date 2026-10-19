@@ -35,7 +35,7 @@ nur `app.js` steckt in einer IIFE.
 |---|---|
 | `index.html` | Markup + komplettes CSS |
 | `daten.js` | `AKTIVITAET`, `MAHLZEITEN`, Portionsregeln, `berechneBMR`/`berechneTDEE` |
-| `grundnahrung.js` | `GRUNDNAHRUNG` (rund 435 Einträge) + `grundnahrungSuche` |
+| `grundnahrung.js` | `GRUNDNAHRUNG` (rund 470 Einträge) + `grundnahrungSuche` |
 | `off.js` | Open Food Facts: `offSuche`, Umwandlung ins App-Format |
 | `vision.js` | Bilderkennung über die Anthropic-API |
 | `app.js` | Oberfläche, Zustand, `localStorage` |
@@ -117,6 +117,28 @@ und Muster** mit (glatt, schraffiert, gegenschraffiert). Die Punkte der Legende 
 dieselben Klassen, damit die Zuordnung ohne Farbunterscheidung funktioniert; die
 Farbregeln dürfen deshalb **nicht** an einen Elternselektor gebunden werden.
 
+### Gewicht und Bewegung (seit v1.11/v1.12)
+- **Gewicht** liegt als Verlauf in `wasgegessen-gewicht` (`[{datum, kg}]`). `WIEGETAGE`
+  (Mi und Sa) steuert die Erinnerung auf der Heute-Seite; sie erscheint nur, wenn für
+  heute nichts erfasst und sie nicht weggelegt wurde. **Beide Richtungen halten sich
+  synchron**: eine neue Wiegung setzt `profil.gewicht` (damit der Grundumsatz mitwandert),
+  ein im Profil geändertes Gewicht wird als Wiegung von heute gespeichert.
+- **Bewegung** in `wasgegessen-sport`, Verbrauch über `sportKcal(met, minuten, kg)`.
+  Gerechnet wird mit **MET − 1**: der Grundumsatz für dieselbe Zeit steckt schon im
+  Tagesbedarf und darf nicht doppelt zählen.
+- `profil.aktivModus` entscheidet, **wie** Aktivität zählt: `'pauschal'` nimmt den
+  Faktor aus `AKTIVITAET`, `'einzeln'` rechnet mit 1,2 und legt den Tagessport obendrauf
+  (`sportZaehltMit()`). Niemals beides – das wäre doppelt gezählt.
+
+### Barcode (seit v1.13)
+`offBarcode(code)` fragt `api/v2/product/<ean>.json` ab – anders als die Freitextsuche
+ist das eindeutig und liefert exakte Werte. `null` heißt „Code unbekannt" (häufig bei
+Eigenmarken), ein Wurf heißt „Produkt da, aber ohne Nährwerte".
+Der Kamera-Scan nutzt `BarcodeDetector`; **die gibt es nur auf Android, macOS und ab
+iOS 17**, im Vorschau-Browser unter Windows nicht. Deshalb steht die Eingabe von Hand
+immer daneben – und **nur die ist hier testbar**. Beim Reiterwechsel und beim Schließen
+des Suchfensters muss `scannerStoppen()` laufen, sonst filmt die Kamera weiter.
+
 ### Alter und Geburtsdatum (seit v1.6)
 Im Profil steht ein **Geburtsdatum** (`profil.geburtstag`, ISO), aus dem
 `alterAusGeburtstag` das Alter rechnet – so läuft es von allein weiter. Profile von
@@ -142,7 +164,7 @@ auch noch die Stichwortregel „1 mittelgroße – 150 g".
 
 Zwei Quellen, bewusst getrennt (seit v1.1):
 
-1. **`grundnahrung.js`** – rund 435 Lebensmittel und Gerichte fest in der App. Das ist die
+1. **`grundnahrung.js`** – rund 470 Lebensmittel und Gerichte fest in der App. Das ist die
    **wichtigere** Quelle: sie ist sofort da, funktioniert offline und überlebt jeden
    Ausfall von Open Food Facts. Nährwerte je 100 g nach europäischer Kennzeichnung
    (**Kohlenhydrate ohne Ballaststoffe**), dazu `alias` für Plural und Synonyme sowie
@@ -167,7 +189,7 @@ GRUNDNAHRUNG.filter(l => Math.abs(l.kcal - (4*l.eiweiss + 4*l.kh + 9*l.fett)) / 
 ```
 
 Erlaubte Ausreißer sind nur Alkoholisches (Alkohol hat 7 kcal/g und steht in keinem
-Makro) und sehr Ballaststoffreiches (Rosenkohl, Himbeeren, Aubergine, Zitrone).
+Makro) und sehr Ballaststoffreiches (Rosenkohl, Himbeeren, Aubergine, Zitrone, Chiasamen).
 
 ## Fallstricke (aus Erfahrung)
 

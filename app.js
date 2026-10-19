@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 
-const APP_VERSION = '1.12';
+const APP_VERSION = '1.13';
 
 /* ---------- Speicherschlüssel ---------- */
 const SP = {
@@ -1081,6 +1081,7 @@ function oeffneSuche(mahlzeit){
 }
 
 function setzeQuelle(quelle){
+  if (quelle !== 'barcode') scannerStoppen();   // Kamera nicht weiterlaufen lassen
   suchQuelle = quelle;
   $$('#such-reiter button').forEach(b => b.classList.toggle('aktiv', b.dataset.quelle === quelle));
   $('such-feld').closest('.suchleiste').hidden = (quelle !== 'suche');
@@ -1098,6 +1099,7 @@ function renderSuchInhalt(){
   behaelter.textContent = '';
 
   if (suchQuelle === 'foto'){ renderFotoBereich(behaelter); return; }
+  if (suchQuelle === 'barcode'){ renderBarcodeBereich(behaelter); return; }
 
   if (suchQuelle === 'zuletzt'){
     if (!zuletzt.length){
@@ -1586,6 +1588,161 @@ function eigenLoeschen(){
 }
 
 /* ============================================================
+   Barcode
+   ============================================================ */
+let scanLauft = null;   // { stream, timer } solange die Kamera an ist
+
+function scannerMoeglich(){
+  return ('BarcodeDetector' in window)
+    && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+}
+
+function renderBarcodeBereich(behaelter){
+  behaelter.textContent = '';
+  scannerStoppen();
+
+  const erklaerung = bau('p', 'klein leise');
+  erklaerung.style.margin = '0 2px 14px';
+  erklaerung.textContent = 'Der Strichcode ist eindeutig – damit kommen die Nährwerte '
+    + 'direkt von der Packung, ohne Raten in der Trefferliste.';
+  behaelter.appendChild(erklaerung);
+
+  // Kamera, wo der Browser sie auslesen kann
+  if (scannerMoeglich()){
+    const scanKnopf = bau('button', 'knopf', '📷  Strichcode scannen');
+    scanKnopf.onclick = () => scannerStarten(behaelter);
+    behaelter.appendChild(scanKnopf);
+  } else {
+    const notiz = bau('div', 'warnung');
+    notiz.textContent = 'Dein Browser kann keine Strichcodes lesen – das können bisher vor allem '
+      + 'Chrome auf Android und Safari ab iOS 17. Tipp den Code so lange von Hand ein.';
+    behaelter.appendChild(notiz);
+  }
+
+  const feld = bau('div', 'feld');
+  feld.style.marginTop = '16px';
+  const label = document.createElement('label');
+  label.setAttribute('for', 'bc-feld');
+  label.textContent = 'Strichcode eintippen';
+  feld.appendChild(label);
+
+  const reihe = bau('div', 'feld-reihe');
+  const eingabe = document.createElement('input');
+  eingabe.id = 'bc-feld';
+  eingabe.type = 'text';
+  eingabe.inputMode = 'numeric';
+  eingabe.placeholder = 'z. B. 3017620422003';
+  Object.assign(eingabe.style, { padding:'11px 12px', border:'1px solid var(--rand)',
+    borderRadius:'var(--r-klein)', background:'var(--bg)' });
+  const los = bau('button', 'knopf', 'Suchen');
+  los.style.maxWidth = '110px';
+  los.onclick = () => barcodeNachschlagen(eingabe.value, behaelter);
+  eingabe.addEventListener('keydown', ev => {
+    if (ev.key === 'Enter') barcodeNachschlagen(eingabe.value, behaelter);
+  });
+
+  reihe.appendChild(eingabe);
+  reihe.appendChild(los);
+  feld.appendChild(reihe);
+  behaelter.appendChild(feld);
+
+  const ergebnis = bau('div');
+  ergebnis.id = 'bc-ergebnis';
+  behaelter.appendChild(ergebnis);
+}
+
+async function scannerStarten(behaelter){
+  const kasten = $('bc-ergebnis');
+  kasten.textContent = '';
+
+  const video = document.createElement('video');
+  video.setAttribute('playsinline', '');
+  video.muted = true;
+  Object.assign(video.style, { width:'100%', borderRadius:'var(--r)',
+    marginTop:'14px', maxHeight:'300px', objectFit:'cover', background:'#000' });
+
+  const abbrechen = bau('button', 'knopf zweit', 'Scannen beenden');
+  abbrechen.style.marginTop = '10px';
+  abbrechen.onclick = () => { scannerStoppen(); renderSuchInhalt(); };
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' }
+    });
+    video.srcObject = stream;
+    await video.play();
+
+    kasten.appendChild(video);
+    kasten.appendChild(abbrechen);
+
+    const detector = new BarcodeDetector({
+      formats: ['ean_13','ean_8','upc_a','upc_e','code_128']
+    });
+
+    // Alle 400 ms ein Bild prüfen – öfter bringt nichts und kostet Akku
+    const timer = setInterval(async () => {
+      try {
+        const treffer = await detector.detect(video);
+        if (treffer.length){
+          const code = treffer[0].rawValue;
+          scannerStoppen();
+          renderSuchInhalt();
+          setTimeout(() => barcodeNachschlagen(code, $('such-inhalt')), 50);
+        }
+      } catch { /* einzelne Bilder dürfen scheitern */ }
+    }, 400);
+
+    scanLauft = { stream, timer };
+  } catch (fehler) {
+    kasten.textContent = '';
+    kasten.appendChild(bau('p', 'hinweis',
+      fehler.name === 'NotAllowedError'
+        ? 'Ohne Kamerazugriff geht das Scannen nicht. Tipp den Code von Hand ein.'
+        : 'Die Kamera lässt sich nicht öffnen: ' + fehler.message));
+  }
+}
+
+function scannerStoppen(){
+  if (!scanLauft) return;
+  clearInterval(scanLauft.timer);
+  scanLauft.stream.getTracks().forEach(t => t.stop());
+  scanLauft = null;
+}
+
+async function barcodeNachschlagen(code, behaelter){
+  const kasten = $('bc-ergebnis') || behaelter;
+  kasten.textContent = '';
+
+  const laden = bau('div', 'hinweis');
+  laden.appendChild(bau('div', 'spinner'));
+  laden.appendChild(bau('div', null, 'Suche Strichcode ' + String(code).replace(/\D/g, '') + ' …'));
+  kasten.appendChild(laden);
+
+  try {
+    const lm = await offBarcode(code);
+    kasten.textContent = '';
+
+    if (!lm){
+      kasten.appendChild(bau('p', 'hinweis',
+        'Diesen Strichcode kennt Open Food Facts nicht. Das passiert bei Eigenmarken öfter – '
+        + 'du kannst das Produkt selbst anlegen.'));
+      const knopf = bau('button', 'knopf zweit', '+ Selbst anlegen');
+      knopf.onclick = () => oeffneEigen(null);
+      kasten.appendChild(knopf);
+      return;
+    }
+
+    kasten.appendChild(abschnitt('Gefunden', 'Strichcode ' + String(code).replace(/\D/g, '')));
+    kasten.appendChild(trefferListe([lm]));
+    // Direkt öffnen – wer scannt, will eintragen
+    setTimeout(() => oeffneDetail(lm), 150);
+  } catch (fehler) {
+    kasten.textContent = '';
+    kasten.appendChild(bau('p', 'hinweis', fehler.message));
+  }
+}
+
+/* ============================================================
    Bilderkennung (optional)
    ============================================================ */
 function renderFotoBereich(behaelter){
@@ -1794,6 +1951,7 @@ function oeffneOverlay(id){
   document.body.style.overflow = 'hidden';
 }
 function schliesseOverlay(id){
+  if (id === 'ov-suche') scannerStoppen();
   $(id).classList.remove('auf');
   if (!$$('.overlay.auf').length) document.body.style.overflow = '';
 }

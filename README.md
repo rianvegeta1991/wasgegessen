@@ -11,7 +11,7 @@ auf deinem Gerät und verlassen es nicht.
 ## Was die App kann
 
 ### Essen eintragen
-- **Rund 435 Lebensmittel und Gerichte sind fest eingebaut** – von Kartoffeln, Butter und
+- **Rund 470 Lebensmittel und Gerichte sind fest eingebaut** – von Kartoffeln, Butter und
   Eiern über Brot, Gemüse, Obst und Käse bis zu fertigen Gerichten: deutsche Küche
   (Maultaschen, Grüne Soße, Flammkuchen, Schweinshaxe, Labskaus), Imbiss (Döner,
   Currywurst, Falafelsandwich, Fish and Chips) und internationale Klassiker (Ramen,
@@ -20,6 +20,8 @@ auf deinem Gerät und verlassen es nicht.
   auch offline, und lassen sich über die Gruppen im Suchfenster durchstöbern.
 - **Suche** zusätzlich in der Lebensmitteldatenbank von
   [Open Food Facts](https://world.openfoodfacts.org/) für verpackte Markenprodukte
+- **Strichcode** scannen oder eintippen – damit kommen die Nährwerte direkt von der
+  Packung, ohne Raten in der Trefferliste
 - **Zwei Eingabearten** je Eintrag, frei wählbar:
   - **Menge** in Gramm bzw. Millilitern
   - **Standardportion** wie „1 Scheibe Brot", „1 Tasse Reis", „1 Apfel" – das
@@ -110,6 +112,7 @@ Gespeichert wird im `localStorage` unter `wasgegessen-*`.
 
 ## Was noch fehlt
 
-- Barcode-Scanner für verpackte Lebensmittel
-- Gewichtsverlauf über die Zeit
+- Sicherung und Rücksicherung der Daten (bisher nur CSV-Export)
 - Abgleich zwischen mehreren Geräten
+- Kamera-Scan für Strichcodes auf iPhone vor iOS 17 und in Firefox
+  (Code eintippen geht überall)

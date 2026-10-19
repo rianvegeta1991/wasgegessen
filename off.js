@@ -56,6 +56,41 @@ async function offSuche(text, signal){
   return treffer;
 }
 
+/* ---------- Barcode ----------
+   Der verlässlichste Weg zu einem verpackten Produkt: ein Strichcode ist
+   eindeutig, da muss nichts geraten werden. Liefert null, wenn die
+   Datenbank den Code nicht kennt. */
+const OFF_PRODUKT = 'https://world.openfoodfacts.org/api/v2/product/';
+
+async function offBarcode(code, signal){
+  const sauber = String(code).replace(/\D/g, '');
+  if (sauber.length < 8 || sauber.length > 14){
+    throw new Error('Das sieht nicht nach einem Strichcode aus – der hat 8 bis 13 Ziffern.');
+  }
+
+  let antwort;
+  try {
+    antwort = await fetch(OFF_PRODUKT + sauber + '.json?fields=' + OFF_FELDER,
+      { signal, headers:{ 'Accept':'application/json' } });
+  } catch (fehler) {
+    if (fehler.name === 'AbortError') throw fehler;
+    throw new Error('Die Lebensmitteldatenbank ist gerade nicht erreichbar.');
+  }
+
+  if (antwort.status === 404) return null;
+  if (!antwort.ok) throw new Error('Die Datenbank antwortet nicht (Fehler ' + antwort.status + ').');
+
+  const daten = await antwort.json();
+  if (daten.status !== 1 || !daten.product) return null;
+
+  const lm = offUmwandeln(daten.product);
+  if (!lm){
+    throw new Error('Das Produkt steht in der Datenbank, aber ohne brauchbare Nährwerte. '
+      + 'Du kannst es selbst anlegen.');
+  }
+  return lm;
+}
+
 /* Ein OFF-Produkt in unser Format übersetzen.
    Gibt null zurück, wenn Name oder Kalorien fehlen – solche
    Einträge sind für ein Kalorientagebuch wertlos. */
