@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 
-const APP_VERSION = '1.11';
+const APP_VERSION = '1.12';
 
 /* ---------- Speicherschlüssel ---------- */
 const SP = {
@@ -14,6 +14,7 @@ const SP = {
   eigene:    'wasgegessen-eigene',
   zuletzt:   'wasgegessen-zuletzt',
   gewicht:   'wasgegessen-gewicht',
+  sport:     'wasgegessen-sport',
   key:       'wasgegessen-key',
   modell:    'wasgegessen-modell'
 };
@@ -74,11 +75,15 @@ function datumLesbar(s){
 }
 
 /* ---------- Zustand ---------- */
-let profil    = lade(SP.profil, { groesse:null, gewicht:null, alter:null, geburtstag:null, geschlecht:null, aktivitaet:'leicht', zielManuell:null, zielGewicht:null });
+let profil    = lade(SP.profil, { groesse:null, gewicht:null, alter:null, geburtstag:null, geschlecht:null, aktivitaet:'leicht', zielManuell:null, zielGewicht:null, aktivModus:'pauschal' });
 let eintraege = lade(SP.eintraege, []);
 let eigene    = lade(SP.eigene, []);
 let zuletzt   = lade(SP.zuletzt, []);
 let gewichte  = lade(SP.gewicht, []);   // [{datum, kg}], aufsteigend
+let sport     = lade(SP.sport, []);     // [{id, datum, art, minuten, kcal}]
+
+/* Zustand des Bewegungs-Fensters */
+let sp = null;
 
 /* Für welchen Tag die Wiege-Erinnerung weggelegt wurde (nur diese Sitzung
    bzw. dieser Tag – morgen fragt sie wieder) */
@@ -120,7 +125,10 @@ function summeVon(liste){
 function renderHeute(){
   const liste = eintraegeVon(aktDatum);
   const summe = summeVon(liste);
-  const ziel  = tagesZiel(profil);
+  const grundZiel = tagesZiel(profil);
+  // Wer seine Bewegung einzeln erfasst, darf das Verbrauchte dazuessen
+  const ausSport = sportZaehltMit() ? sportKcalVon(aktDatum) : 0;
+  const ziel = grundZiel ? grundZiel + ausSport : null;
 
   // Ring: die erste Runde zeigt den Weg zum Tagesziel. Wird es überschritten,
   // läuft eine zweite Runde in Rot darüber – je nach Überschuss. Ist auch die
@@ -150,6 +158,9 @@ function renderHeute(){
 
   // Zahlen daneben
   $('f-ziel').textContent = ziel ? ziel + ' kcal' : 'kein Profil';
+  $('f-ziel').title = ausSport
+    ? grundZiel + ' kcal Grundbedarf plus ' + ausSport + ' kcal durch Bewegung'
+    : '';
   $('f-gegessen').textContent = Math.round(summe.kcal) + ' kcal';
   const rest = ziel ? ziel - Math.round(summe.kcal) : null;
   $('f-rest').textContent = rest === null ? '–' : (rest >= 0 ? rest + ' kcal' : Math.abs(rest) + ' kcal drüber');
@@ -163,7 +174,159 @@ function renderHeute(){
   renderVerteilung(summe);
 
   renderMahlzeiten(liste);
+  renderBewegung();
   renderWiegeKarte();
+}
+
+/* ============================================================
+   Bewegung
+   ============================================================ */
+function sportVon(datum){
+  return sport.filter(x => x.datum === datum);
+}
+
+function sportKcalVon(datum){
+  return sportVon(datum).reduce((s, x) => s + x.kcal, 0);
+}
+
+/* Angerechnet wird Sport nur, wenn die Bewegung einzeln erfasst wird.
+   Im pauschalen Modus steckt sie schon im Aktivitätsfaktor – sie noch
+   einmal aufs Budget zu legen, hieße sie doppelt zu zählen. */
+function sportZaehltMit(){
+  return profil.aktivModus === 'einzeln';
+}
+
+function renderBewegung(){
+  const behaelter = $('bewegung');
+  behaelter.textContent = '';
+
+  const liste = sportVon(aktDatum);
+  const summe = sportKcalVon(aktDatum);
+
+  const block = bau('div', 'mahlzeit');
+  const kopf  = bau('div', 'mahlzeit-kopf');
+  const h3 = bau('h3');
+  h3.appendChild(bau('span', 'icon', '🏃'));
+  h3.appendChild(text('Bewegung'));
+  kopf.appendChild(h3);
+  kopf.appendChild(bau('span', 'summe', summe ? '+' + summe + ' kcal' : ''));
+
+  const plus = bau('button', 'plus', '+');
+  plus.setAttribute('aria-label', 'Bewegung eintragen');
+  plus.onclick = () => oeffneSport(null);
+  kopf.appendChild(plus);
+  block.appendChild(kopf);
+
+  if (!liste.length){
+    const leer = bau('div', 'leer', 'Noch nichts eingetragen');
+    leer.onclick = () => oeffneSport(null);
+    block.appendChild(leer);
+  } else {
+    const kasten = bau('div', 'eintraege');
+    for (const x of liste){
+      const knopf = bau('button', 'eintrag');
+      const txt = bau('div', 'txt');
+      const art = sportart(x.art);
+      txt.appendChild(bau('div', 'name', art ? art.name : x.art));
+      txt.appendChild(bau('div', 'menge', x.minuten + ' Minuten'
+        + (sportZaehltMit() ? '' : ' · zählt nicht aufs Budget')));
+      knopf.appendChild(txt);
+      const kcal = bau('div', 'kcal', '+' + x.kcal);
+      kcal.appendChild(bau('small', null, ' kcal'));
+      knopf.appendChild(kcal);
+      knopf.onclick = () => oeffneSport(x);
+      kasten.appendChild(knopf);
+    }
+    block.appendChild(kasten);
+  }
+  behaelter.appendChild(block);
+}
+
+function oeffneSport(vorhanden){
+  const gewichtKg = profil.gewicht;
+  if (!gewichtKg){
+    toast('Für den Verbrauch braucht die App dein Gewicht – trag es im Profil ein.');
+    return;
+  }
+
+  sp = {
+    id: vorhanden ? vorhanden.id : null,
+    art: vorhanden ? vorhanden.art : 'joggen',
+    minuten: vorhanden ? vorhanden.minuten : 30
+  };
+
+  $('sport-titel').textContent = vorhanden ? 'Bewegung bearbeiten' : 'Bewegung eintragen';
+  $('sp-loeschen').hidden = !vorhanden;
+
+  // Auswahlliste nach Gruppen
+  const auswahl = $('sp-art');
+  auswahl.textContent = '';
+  for (const gruppe of ['Cardio','Kraft','Sport','Alltag']){
+    const og = document.createElement('optgroup');
+    og.label = gruppe;
+    for (const a of SPORTARTEN.filter(s => s.gruppe === gruppe)){
+      const opt = document.createElement('option');
+      opt.value = a.id;
+      opt.textContent = a.name;
+      og.appendChild(opt);
+    }
+    auswahl.appendChild(og);
+  }
+  auswahl.value = sp.art;
+  $('sp-dauer').value = sp.minuten;
+
+  sportRechnen();
+  oeffneOverlay('ov-sport');
+}
+
+function sportRechnen(){
+  const art = sportart(sp.art);
+  const kcal = sportKcal(art ? art.met : 0, sp.minuten, profil.gewicht);
+  $('sp-kcal').textContent = kcal;
+  $('sp-hinweis').textContent = '';
+  $('sp-hinweis').appendChild(bau('span', null,
+    sportZaehltMit() ? 'kommt heute aufs Budget' : 'wird nur protokolliert'));
+  $('sp-formel').textContent = art
+    ? art.name + ' entspricht etwa ' + String(art.met).replace('.', ',')
+      + ' MET. Gerechnet mit ' + mengeText(profil.gewicht) + ' kg Körpergewicht; '
+      + 'der Grundumsatz für dieselbe Zeit ist schon abgezogen.'
+    : '';
+  return kcal;
+}
+
+function sportSpeichern(){
+  const art = sportart(sp.art);
+  if (!art){ toast('Bitte eine Aktivität wählen.'); return; }
+  if (!sp.minuten || sp.minuten < 1){ toast('Bitte eine Dauer angeben.'); return; }
+  if (sp.minuten > 1440){ toast('Mehr als 24 Stunden gehen nicht.'); return; }
+
+  const eintrag = {
+    id: sp.id || neueId(),
+    datum: aktDatum,
+    zeit: new Date().toISOString(),
+    art: sp.art,
+    minuten: sp.minuten,
+    kcal: sportKcal(art.met, sp.minuten, profil.gewicht)
+  };
+
+  if (sp.id){
+    const i = sport.findIndex(x => x.id === sp.id);
+    if (i >= 0){ eintrag.datum = sport[i].datum; sport[i] = eintrag; }
+  } else {
+    sport.push(eintrag);
+  }
+  sichere(SP.sport, sport);
+  schliesseOverlay('ov-sport');
+  renderHeute();
+  toast(sp.id ? 'Geändert' : '+' + eintrag.kcal + ' kcal verbraucht');
+}
+
+function sportLoeschen(){
+  sport = sport.filter(x => x.id !== sp.id);
+  sichere(SP.sport, sport);
+  schliesseOverlay('ov-sport');
+  renderHeute();
+  toast('Einheit gelöscht');
 }
 
 /* ============================================================
@@ -853,6 +1016,14 @@ function renderProfil(){
           + mengeText(Math.abs(Math.round((profil.gewicht - profil.zielGewicht) * 10) / 10)) + ' kg.')
     : 'Erscheint als Linie im Gewichtsverlauf.';
   $('aktivitaet-hilfe').textContent = (AKTIVITAET.find(a => a.id === profil.aktivitaet) || {}).hilfe || '';
+
+  const einzeln = profil.aktivModus === 'einzeln';
+  $$('#aktivmodus-chips .chip').forEach(c =>
+    c.classList.toggle('aktiv', c.dataset.modus === (einzeln ? 'einzeln' : 'pauschal')));
+  $('feld-aktivitaet').hidden = einzeln;
+  $('aktivmodus-hilfe').textContent = einzeln
+    ? 'Gerechnet wird mit dem Grundumsatz plus Alltag (Faktor 1,2). Was du unter „Bewegung" einträgst, kommt für den jeweiligen Tag obendrauf.'
+    : 'Dein Aktivitätslevel ist im Tagesbedarf eingerechnet. Sporteinheiten kannst du trotzdem protokollieren – sie zählen dann aber nicht zusätzlich aufs Budget.';
 
   renderEigeneListe();
   renderKeyStatus();
@@ -1771,6 +1942,27 @@ function verdrahten(){
     const kg = zahlOderNull($('p-gewicht').value);
     if (kg !== null) gewichtSetzen(heuteStr(), Math.round(kg * 10) / 10);
   });
+
+  // Bewegung
+  $$('#aktivmodus-chips .chip').forEach(c => {
+    c.onclick = () => { profil.aktivModus = c.dataset.modus; profilSpeichern(); };
+  });
+  $('sp-art').addEventListener('change', () => { sp.art = $('sp-art').value; sportRechnen(); });
+  $('sp-dauer').addEventListener('input', () => {
+    sp.minuten = Math.round(zahlOderNull($('sp-dauer').value) || 0);
+    sportRechnen();
+  });
+  $$('#sp-dauer-chips .chip').forEach(c => {
+    c.onclick = () => {
+      sp.minuten = Number(c.dataset.min);
+      $('sp-dauer').value = sp.minuten;
+      sportRechnen();
+    };
+  });
+  $('sport-speichern').onclick = sportSpeichern;
+  $('sp-loeschen').onclick = () => {
+    if (confirm('Diese Einheit wirklich löschen?')) sportLoeschen();
+  };
 
   $('wiege-sichern').onclick = wiegenEintragen;
   $('wiege-feld').addEventListener('keydown', ev => {

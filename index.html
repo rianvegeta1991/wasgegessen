@@ -516,6 +516,7 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
       </div>
     </div>
     <div id="mahlzeiten"></div>
+    <div id="bewegung"></div>
   </section>
 
   <!-- ===== VERLAUF ===== -->
@@ -600,10 +601,18 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
         <input id="p-alter" type="text" inputmode="numeric" placeholder="30">
       </div>
       <div class="feld">
+        <label>Bewegung erfassen</label>
+        <div class="chips" id="aktivmodus-chips">
+          <button class="chip" data-modus="pauschal">Pauschal</button>
+          <button class="chip" data-modus="einzeln">Einzelne Einheiten</button>
+        </div>
+      </div>
+      <div class="feld" id="feld-aktivitaet">
         <label for="p-aktivitaet">Aktivitätslevel</label>
         <select id="p-aktivitaet"></select>
         <p class="klein leise" id="aktivitaet-hilfe" style="margin:6px 2px 0"></p>
       </div>
+      <p class="klein leise" id="aktivmodus-hilfe" style="margin:-4px 2px 13px"></p>
       <details class="akkordeon">
         <summary>Tagesziel selbst festlegen</summary>
         <div class="inhalt">
@@ -792,6 +801,39 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
   </div>
 </div>
 
+<!-- ===== Overlay: Bewegung ===== -->
+<div class="overlay" id="ov-sport">
+  <div class="ov-kopf">
+    <button class="zurueck" data-schliessen="ov-sport" aria-label="Zurück">&lsaquo;</button>
+    <h2 id="sport-titel">Bewegung eintragen</h2>
+    <button id="sport-speichern">Speichern</button>
+  </div>
+  <div class="ov-inhalt">
+    <div class="kcal-vorschau">
+      <b id="sp-kcal">0</b>
+      <span>kcal verbraucht</span>
+      <div class="mk" id="sp-hinweis"></div>
+    </div>
+    <div class="feld">
+      <label for="sp-art">Was hast du gemacht?</label>
+      <select id="sp-art"></select>
+    </div>
+    <div class="feld">
+      <label for="sp-dauer">Dauer in Minuten</label>
+      <input id="sp-dauer" type="text" inputmode="numeric" value="30">
+      <div class="chips" id="sp-dauer-chips" style="margin-top:9px">
+        <button class="chip" data-min="15">15 min</button>
+        <button class="chip" data-min="30">30 min</button>
+        <button class="chip" data-min="45">45 min</button>
+        <button class="chip" data-min="60">1 Std</button>
+        <button class="chip" data-min="90">1,5 Std</button>
+      </div>
+    </div>
+    <p class="klein leise" id="sp-formel" style="margin:0 2px"></p>
+    <button class="knopf gefahr" id="sp-loeschen" hidden style="margin-top:18px">Einheit löschen</button>
+  </div>
+</div>
+
 <!-- ===== Overlay: Foto ===== -->
 <div class="overlay" id="ov-foto">
   <div class="ov-kopf">
@@ -808,10 +850,10 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
 <!-- Die Versionsnummer an den Skripten erzwingt frische Dateien nach einem Update.
      Bei einer neuen Version hier, in APP_VERSION (app.js) und in den ASSETS
      des Service Workers dieselbe Nummer eintragen. -->
-<script src="daten.js?v=1.11"></script>
-<script src="grundnahrung.js?v=1.11"></script>
-<script src="off.js?v=1.11"></script>
-<script src="vision.js?v=1.11"></script>
-<script src="app.js?v=1.11"></script>
+<script src="daten.js?v=1.12"></script>
+<script src="grundnahrung.js?v=1.12"></script>
+<script src="off.js?v=1.12"></script>
+<script src="vision.js?v=1.12"></script>
+<script src="app.js?v=1.12"></script>
 </body>
 </html>

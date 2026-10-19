@@ -13,6 +13,70 @@ const AKTIVITAET = [
   { id:'extrem',   faktor:1.9,  name:'Extrem aktiv',   hilfe:'Harter Sport täglich oder körperliche Arbeit' }
 ];
 
+/* ---------- Sport und Bewegung ----------
+   Verbrauch über MET-Werte (metabolisches Äquivalent): ein MET ist der
+   Umsatz in Ruhe, Joggen liegt etwa bei 9. Daraus wird gerechnet:
+   kcal = MET × Gewicht in kg × Stunden. Die Werte sind Durchschnitte –
+   wie viel jemand wirklich verbraucht, hängt an Tempo und Technik.   */
+const SPORTARTEN = [
+  { gruppe:'Cardio', id:'gehen',        name:'Spazieren',            met:3.0 },
+  { gruppe:'Cardio', id:'walking',      name:'Zügiges Gehen',        met:4.3 },
+  { gruppe:'Cardio', id:'wandern',      name:'Wandern',              met:6.0 },
+  { gruppe:'Cardio', id:'joggen_leicht',name:'Joggen, locker',       met:7.0 },
+  { gruppe:'Cardio', id:'joggen',       name:'Joggen, zügig',        met:9.8 },
+  { gruppe:'Cardio', id:'laufen',       name:'Laufen, schnell',      met:12.5 },
+  { gruppe:'Cardio', id:'rad_leicht',   name:'Radfahren, gemütlich', met:4.0 },
+  { gruppe:'Cardio', id:'rad',          name:'Radfahren, zügig',     met:8.0 },
+  { gruppe:'Cardio', id:'rad_schnell',  name:'Radfahren, sportlich', met:12.0 },
+  { gruppe:'Cardio', id:'schwimmen',    name:'Schwimmen, moderat',   met:7.0 },
+  { gruppe:'Cardio', id:'schwimmen_int',name:'Schwimmen, intensiv',  met:10.0 },
+  { gruppe:'Cardio', id:'crosstrainer', name:'Crosstrainer',         met:7.0 },
+  { gruppe:'Cardio', id:'rudern',       name:'Rudergerät',           met:8.5 },
+  { gruppe:'Cardio', id:'seilspringen', name:'Seilspringen',         met:11.0 },
+  { gruppe:'Cardio', id:'hiit',         name:'HIIT / Intervalle',    met:10.0 },
+
+  { gruppe:'Kraft',  id:'kraft_leicht', name:'Krafttraining, leicht',  met:3.5 },
+  { gruppe:'Kraft',  id:'kraft',        name:'Krafttraining, moderat', met:5.0 },
+  { gruppe:'Kraft',  id:'kraft_hart',   name:'Krafttraining, intensiv',met:6.5 },
+  { gruppe:'Kraft',  id:'calisthenics', name:'Eigengewichtstraining',  met:5.5 },
+  { gruppe:'Kraft',  id:'crossfit',     name:'CrossFit',               met:8.0 },
+
+  { gruppe:'Sport',  id:'fussball',     name:'Fußball',       met:8.0 },
+  { gruppe:'Sport',  id:'basketball',   name:'Basketball',    met:7.5 },
+  { gruppe:'Sport',  id:'volleyball',   name:'Volleyball',    met:4.5 },
+  { gruppe:'Sport',  id:'tennis',       name:'Tennis',        met:7.5 },
+  { gruppe:'Sport',  id:'tischtennis',  name:'Tischtennis',   met:4.0 },
+  { gruppe:'Sport',  id:'badminton',    name:'Badminton',     met:5.5 },
+  { gruppe:'Sport',  id:'squash',       name:'Squash',        met:10.0 },
+  { gruppe:'Sport',  id:'handball',     name:'Handball',      met:8.0 },
+  { gruppe:'Sport',  id:'klettern',     name:'Klettern',      met:8.0 },
+  { gruppe:'Sport',  id:'kampfsport',   name:'Kampfsport',    met:9.0 },
+  { gruppe:'Sport',  id:'tanzen',       name:'Tanzen',        met:5.0 },
+  { gruppe:'Sport',  id:'yoga',         name:'Yoga',          met:3.0 },
+  { gruppe:'Sport',  id:'pilates',      name:'Pilates',       met:3.5 },
+  { gruppe:'Sport',  id:'golf',         name:'Golf',          met:4.8 },
+  { gruppe:'Sport',  id:'reiten',       name:'Reiten',        met:5.5 },
+  { gruppe:'Sport',  id:'ski',          name:'Skifahren',     met:7.0 },
+  { gruppe:'Sport',  id:'skaten',       name:'Inlineskaten',  met:7.5 },
+
+  { gruppe:'Alltag', id:'garten',       name:'Gartenarbeit',  met:4.0 },
+  { gruppe:'Alltag', id:'putzen',       name:'Hausarbeit',    met:3.0 },
+  { gruppe:'Alltag', id:'treppen',      name:'Treppensteigen',met:8.0 },
+  { gruppe:'Alltag', id:'umzug',        name:'Schwer tragen', met:6.0 }
+];
+
+function sportart(id){
+  return SPORTARTEN.find(s => s.id === id) || null;
+}
+
+/* Verbrauch einer Einheit. Abgezogen wird der Grundumsatz für dieselbe
+   Zeit (1 MET) – sonst zählte man die Kalorien doppelt, die ohnehin im
+   Tagesbedarf stecken. */
+function sportKcal(met, minuten, gewichtKg){
+  if (!met || !minuten || !gewichtKg) return 0;
+  return Math.round((met - 1) * gewichtKg * (minuten / 60));
+}
+
 /* ---------- Mahlzeiten ---------- */
 const MAHLZEITEN = [
   { id:'fruehstueck', name:'Frühstück',   icon:'☕' },
@@ -187,7 +251,10 @@ function berechneBMR(profil){
 function berechneTDEE(profil){
   const bmr = berechneBMR(profil);
   if (bmr === null) return null;
-  return Math.round(bmr * aktivitaetFaktor(profil.aktivitaet));
+  // Wer seine Bewegung einzeln einträgt, rechnet hier nur mit der
+  // Grundaktivität – der Sport kommt tageweise obendrauf.
+  const faktor = profil.aktivModus === 'einzeln' ? 1.2 : aktivitaetFaktor(profil.aktivitaet);
+  return Math.round(bmr * faktor);
 }
 
 function aktivitaetFaktor(id){
