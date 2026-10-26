@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 
-const APP_VERSION = '1.13';
+const APP_VERSION = '1.14';
 
 /* ---------- Speicherschlüssel ---------- */
 const SP = {
@@ -75,7 +75,7 @@ function datumLesbar(s){
 }
 
 /* ---------- Zustand ---------- */
-let profil    = lade(SP.profil, { groesse:null, gewicht:null, alter:null, geburtstag:null, geschlecht:null, aktivitaet:'leicht', zielManuell:null, zielGewicht:null, aktivModus:'pauschal' });
+let profil    = lade(SP.profil, { groesse:null, gewicht:null, alter:null, geburtstag:null, geschlecht:null, aktivitaet:'leicht', zielManuell:null, zielGewicht:null, zielDatum:null, aktivModus:'pauschal' });
 let eintraege = lade(SP.eintraege, []);
 let eigene    = lade(SP.eigene, []);
 let zuletzt   = lade(SP.zuletzt, []);
@@ -125,7 +125,12 @@ function summeVon(liste){
 function renderHeute(){
   const liste = eintraegeVon(aktDatum);
   const summe = summeVon(liste);
-  const grundZiel = tagesZiel(profil);
+  // Zwei Richtwerte: Gewicht halten und das Zielgewicht bis zum Termin
+  // erreichen. Gibt es den zweiten, führt er – er ist der engere.
+  const halten = tagesZiel(profil);
+  const rw = zielRichtwert(profil, aktuellesGewicht());
+  const grundZiel = (rw && !rw.vorbei) ? rw.budget : halten;
+
   // Wer seine Bewegung einzeln erfasst, darf das Verbrauchte dazuessen
   const ausSport = sportZaehltMit() ? sportKcalVon(aktDatum) : 0;
   const ziel = grundZiel ? grundZiel + ausSport : null;
@@ -171,11 +176,74 @@ function renderHeute(){
   setzeMakro('eiweiss', summe.eiweiss, mz && mz.eiweiss);
   setzeMakro('fett',    summe.fett,    mz && mz.fett);
   setzeMakro('kh',      summe.kh,      mz && mz.kh);
+  renderRichtwerte(summe.kcal, halten, rw, ausSport);
   renderVerteilung(summe);
 
   renderMahlzeiten(liste);
   renderBewegung();
   renderWiegeKarte();
+}
+
+/* Das jüngste gewogene Gewicht – darauf fußt der Zielrichtwert, damit
+   er sich mit dem Fortschritt anpasst. Fällt auf das Profil zurück. */
+function aktuellesGewicht(){
+  return gewichte.length ? gewichte[gewichte.length - 1].kg : profil.gewicht;
+}
+
+/* Beide Richtwerte untereinander: halten und Zielgewicht erreichen.
+   Der engere führt und ist farblich hervorgehoben. */
+function renderRichtwerte(gegessen, halten, rw, ausSport){
+  const box = $('richtwerte');
+  box.textContent = '';
+
+  // Ohne Zieltermin gibt es nur einen Richtwert – dann bleibt der Ring allein
+  if (!halten || !rw || rw.vorbei){
+    box.hidden = true;
+    if (rw && rw.vorbei){
+      box.hidden = false;
+      const notiz = bau('p', 'rw-fuss');
+      notiz.textContent = 'Dein Zieltermin ist vorbei. Trag im Profil einen neuen ein, '
+        + 'dann rechnet die App wieder mit.';
+      box.appendChild(notiz);
+    }
+    return;
+  }
+  box.hidden = false;
+
+  const zeile = (name, budget, fuehrend, zusatz) => {
+    const z = bau('div', 'rw-zeile' + (fuehrend ? ' fuehrend' : ''));
+    const n = bau('div', 'name');
+    n.appendChild(bau('span', 'rw-marke'));
+    n.appendChild(text(name));
+    if (zusatz) n.appendChild(bau('span', 'leise', ' ' + zusatz));
+    z.appendChild(n);
+    z.appendChild(bau('span', 'wert', (budget + ausSport) + ' kcal'));
+    const rest = budget + ausSport - Math.round(gegessen);
+    const r = bau('span', 'rest', rest >= 0 ? rest + ' übrig' : Math.abs(rest) + ' drüber');
+    if (rest < 0) z.classList.add('drueber');
+    z.appendChild(r);
+    return z;
+  };
+
+  box.appendChild(zeile('Gewicht halten', halten, false));
+  box.appendChild(zeile('Zielgewicht erreichen', rw.budget, true,
+    'bis ' + kurzDatum(profil.zielDatum)));
+
+  const fuss = bau('p', 'rw-fuss');
+  const richtung = rw.restKg >= 0 ? 'abnehmen' : 'zunehmen';
+  fuss.textContent = 'Noch ' + mengeText(Math.abs(rw.restKg)) + ' kg ' + richtung
+    + ' in ' + rw.restTage + (rw.restTage === 1 ? ' Tag' : ' Tagen')
+    + ' – das sind rund ' + Math.abs(rw.defizit) + ' kcal pro Tag '
+    + (rw.restKg >= 0 ? 'unter' : 'über') + ' dem Haltebedarf.';
+  box.appendChild(fuss);
+
+  if (rw.abgefangen){
+    const warnung = bau('p', 'rw-warnung');
+    warnung.textContent = 'So schnell geht das nicht gesund: Der Richtwert steht auf deinem '
+      + 'Grundumsatz von ' + rw.untergrenze + ' kcal und nicht tiefer. Nimm dir mehr Zeit '
+      + 'oder setz das Zielgewicht höher.';
+    box.appendChild(warnung);
+  }
 }
 
 /* ============================================================
@@ -209,6 +277,24 @@ function renderBewegung(){
   h3.appendChild(bau('span', 'icon', '🏃'));
   h3.appendChild(text('Bewegung'));
   kopf.appendChild(h3);
+
+  // Im pauschalen Modus steckt die Bewegung schon im Aktivitätslevel.
+  // Dann lässt sich hier nichts eintragen – sonst zählte man sie doppelt.
+  if (!sportZaehltMit()){
+    block.appendChild(kopf);
+    const hinweis = bau('div', 'leer');
+    hinweis.style.textAlign = 'left';
+    hinweis.appendChild(bau('div', null,
+      'Deine Bewegung steckt pauschal im Aktivitätslevel. Zum Eintragen einzelner Einheiten im Profil umstellen.'));
+    const knopf = bau('button', 'knopf zweit', 'Im Profil umstellen');
+    knopf.style.marginTop = '10px';
+    knopf.onclick = () => zeigeScreen('profil');
+    hinweis.appendChild(knopf);
+    block.appendChild(hinweis);
+    behaelter.appendChild(block);
+    return;
+  }
+
   kopf.appendChild(bau('span', 'summe', summe ? '+' + summe + ' kcal' : ''));
 
   const plus = bau('button', 'plus', '+');
@@ -228,8 +314,7 @@ function renderBewegung(){
       const txt = bau('div', 'txt');
       const art = sportart(x.art);
       txt.appendChild(bau('div', 'name', art ? art.name : x.art));
-      txt.appendChild(bau('div', 'menge', x.minuten + ' Minuten'
-        + (sportZaehltMit() ? '' : ' · zählt nicht aufs Budget')));
+      txt.appendChild(bau('div', 'menge', x.minuten + ' Minuten'));
       knopf.appendChild(txt);
       const kcal = bau('div', 'kcal', '+' + x.kcal);
       kcal.appendChild(bau('small', null, ' kcal'));
@@ -243,6 +328,10 @@ function renderBewegung(){
 }
 
 function oeffneSport(vorhanden){
+  if (!sportZaehltMit()){
+    toast('Stell im Profil auf einzelne Einheiten um.');
+    return;
+  }
   const gewichtKg = profil.gewicht;
   if (!gewichtKg){
     toast('Für den Verbrauch braucht die App dein Gewicht – trag es im Profil ein.');
@@ -284,8 +373,7 @@ function sportRechnen(){
   const kcal = sportKcal(art ? art.met : 0, sp.minuten, profil.gewicht);
   $('sp-kcal').textContent = kcal;
   $('sp-hinweis').textContent = '';
-  $('sp-hinweis').appendChild(bau('span', null,
-    sportZaehltMit() ? 'kommt heute aufs Budget' : 'wird nur protokolliert'));
+  $('sp-hinweis').appendChild(bau('span', null, 'kommt heute aufs Budget'));
   $('sp-formel').textContent = art
     ? art.name + ' entspricht etwa ' + String(art.met).replace('.', ',')
       + ' MET. Gerechnet mit ' + mengeText(profil.gewicht) + ' kg Körpergewicht; '
@@ -1009,12 +1097,21 @@ function renderProfil(){
   $('p-aktivitaet').value = profil.aktivitaet;
   $('p-ziel').value = profil.zielManuell || '';
   $('p-zielgewicht').value = alsText(profil.zielGewicht);
-  $('zielgewicht-hinweis').textContent = profil.zielGewicht && profil.gewicht
-    ? (Math.abs(profil.gewicht - profil.zielGewicht) < 0.05
-        ? 'Du bist auf deinem Zielgewicht.'
-        : 'Von ' + mengeText(profil.gewicht) + ' kg sind es noch '
-          + mengeText(Math.abs(Math.round((profil.gewicht - profil.zielGewicht) * 10) / 10)) + ' kg.')
-    : 'Erscheint als Linie im Gewichtsverlauf.';
+  $('p-zieldatum').value = profil.zielDatum || '';
+
+  const rw = zielRichtwert(profil, aktuellesGewicht());
+  const jetzt = aktuellesGewicht();
+  $('zielgewicht-hinweis').textContent =
+    !profil.zielGewicht ? 'Erscheint als Linie im Gewichtsverlauf.'
+    : !jetzt ? 'Trag dein Gewicht ein, dann rechnet die App den Weg dorthin aus.'
+    : Math.abs(jetzt - profil.zielGewicht) < 0.05 ? 'Du bist auf deinem Zielgewicht.'
+    : !rw ? 'Von ' + mengeText(jetzt) + ' kg sind es noch '
+            + mengeText(Math.abs(Math.round((jetzt - profil.zielGewicht) * 10) / 10))
+            + ' kg. Mit einem Termin rechnet die App daraus ein Tagesziel.'
+    : rw.vorbei ? 'Der Termin ist vorbei – trag einen neuen ein.'
+    : 'Noch ' + mengeText(Math.abs(rw.restKg)) + ' kg in ' + rw.restTage + ' Tagen: '
+      + rw.budget + ' kcal pro Tag' + (rw.abgefangen ? ' (auf den Grundumsatz begrenzt)' : '')
+      + '.';
   $('aktivitaet-hilfe').textContent = (AKTIVITAET.find(a => a.id === profil.aktivitaet) || {}).hilfe || '';
 
   const einzeln = profil.aktivModus === 'einzeln';
@@ -2130,6 +2227,15 @@ function verdrahten(){
     wiegenVertagt = heuteStr();
     renderWiegeKarte();
   };
+
+  $('p-zieldatum').addEventListener('change', () => {
+    const wert = $('p-zieldatum').value;
+    if (wert && tageBis(wert) !== null && tageBis(wert) < 0){
+      toast('Der Termin liegt in der Vergangenheit.');
+    }
+    profil.zielDatum = wert || null;
+    profilSpeichern();
+  });
 
   $('p-geburtstag').addEventListener('change', () => {
     const wert = $('p-geburtstag').value;

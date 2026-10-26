@@ -128,7 +128,24 @@ Farbregeln dürfen deshalb **nicht** an einen Elternselektor gebunden werden.
   Tagesbedarf und darf nicht doppelt zählen.
 - `profil.aktivModus` entscheidet, **wie** Aktivität zählt: `'pauschal'` nimmt den
   Faktor aus `AKTIVITAET`, `'einzeln'` rechnet mit 1,2 und legt den Tagessport obendrauf
-  (`sportZaehltMit()`). Niemals beides – das wäre doppelt gezählt.
+  (`sportZaehltMit()`). Niemals beides – das wäre doppelt gezählt. Im pauschalen Modus
+  lässt sich **gar nichts eintragen**: die Sektion zeigt dann nur den Weg ins Profil,
+  und `oeffneSport` weist den Aufruf zusätzlich ab.
+
+### Zwei Richtwerte (seit v1.14)
+Neben „Gewicht halten" (`tagesZiel`) steht „Zielgewicht erreichen" aus
+`zielRichtwert(profil, aktuellesGewicht())`: `profil.zielGewicht` plus `profil.zielDatum`
+ergeben über **7000 kcal je Kilo** das nötige Tagesdefizit. Gerechnet wird immer mit der
+**jüngsten Wiegung**, nicht mit einem festen Startwert – dadurch wächst das Defizit von
+allein, wenn der Termin näher rückt, ohne dass das Gewicht gefallen ist.
+
+Gibt es den zweiten Richtwert, **führt er** (er ist der engere) und der Tagesring bezieht
+sich auf ihn; `renderRichtwerte` zeigt beide mit ihrem Rest.
+
+**Sicherheitsgrenze:** Das Budget geht nie unter den Grundumsatz (`abgefangen: true`,
+dann erscheint eine Warnung). Ohne diese Grenze käme bei knappen Terminen ein negatives
+Tagesziel heraus – eine App, die zu 800 kcal am Tag rät, wäre gesundheitlich bedenklich.
+Diese Grenze nicht entfernen.
 
 ### Barcode (seit v1.13)
 `offBarcode(code)` fragt `api/v2/product/<ean>.json` ab – anders als die Freitextsuche

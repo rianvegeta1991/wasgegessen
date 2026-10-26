@@ -118,6 +118,20 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
 .m-fett .fuell{background:var(--fett)} .m-fett .kopfz span{color:var(--fett)}
 .m-kh .fuell{background:var(--kh)} .m-kh .kopfz span{color:var(--kh)}
 
+/* ---------- Zwei Richtwerte ---------- */
+.richtwerte{margin-top:14px;padding-top:13px;border-top:1px solid var(--rand)}
+.rw-zeile{display:flex;align-items:baseline;gap:8px;padding:5px 0;font-size:12.5px}
+.rw-zeile .name{flex:1;min-width:0}
+.rw-zeile .wert{font-variant-numeric:tabular-nums;font-weight:650;font-size:14px}
+.rw-zeile .rest{font-variant-numeric:tabular-nums;font-size:11.5px;color:var(--leise);min-width:74px;text-align:right}
+.rw-zeile.fuehrend .wert{color:var(--akzent)}
+.rw-zeile.fuehrend .name{font-weight:650}
+.rw-zeile.drueber .rest{color:var(--rot-text);font-weight:600}
+.rw-marke{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;background:var(--rand)}
+.rw-zeile.fuehrend .rw-marke{background:var(--akzent)}
+.rw-fuss{font-size:11.5px;color:var(--leise);margin-top:8px}
+.rw-warnung{font-size:11.5px;color:var(--rot-text);margin-top:8px;font-weight:550}
+
 /* ---------- Verteilung der Kalorien ---------- */
 .verteilung{margin-top:14px;padding-top:13px;border-top:1px solid var(--rand)}
 .vert-kopf{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px;margin-bottom:7px}
@@ -502,6 +516,10 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
 
       <!-- Woraus die Kalorien heute kamen: ein Balken über die ganze Breite,
            aufgeteilt nach dem Kalorienanteil der drei Nährstoffe. -->
+      <!-- Zwei Richtwerte nebeneinander: Gewicht halten und das
+           Zielgewicht bis zum Termin erreichen. -->
+      <div class="richtwerte" id="richtwerte" hidden></div>
+
       <div class="verteilung" id="verteilung" hidden>
         <div class="vert-kopf">
           <span>Verteilung der Kalorien</span>
@@ -621,6 +639,10 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
           <div class="feld" style="margin-bottom:0">
             <label for="p-zielgewicht">Zielgewicht (kg)</label>
             <input id="p-zielgewicht" type="text" inputmode="decimal" placeholder="z. B. 75">
+          </div>
+          <div class="feld" style="margin-bottom:0">
+            <label for="p-zieldatum">Bis wann?</label>
+            <input id="p-zieldatum" type="date">
             <p class="klein leise" id="zielgewicht-hinweis" style="margin:6px 2px 0"></p>
           </div>
         </div>
@@ -851,10 +873,10 @@ main{padding:4px 16px 24px;max-width:640px;margin:0 auto}
 <!-- Die Versionsnummer an den Skripten erzwingt frische Dateien nach einem Update.
      Bei einer neuen Version hier, in APP_VERSION (app.js) und in den ASSETS
      des Service Workers dieselbe Nummer eintragen. -->
-<script src="daten.js?v=1.13"></script>
-<script src="grundnahrung.js?v=1.13"></script>
-<script src="off.js?v=1.13"></script>
-<script src="vision.js?v=1.13"></script>
-<script src="app.js?v=1.13"></script>
+<script src="daten.js?v=1.14"></script>
+<script src="grundnahrung.js?v=1.14"></script>
+<script src="off.js?v=1.14"></script>
+<script src="vision.js?v=1.14"></script>
+<script src="app.js?v=1.14"></script>
 </body>
 </html>

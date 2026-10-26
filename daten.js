@@ -273,6 +273,53 @@ function tagesZiel(profil){
   return berechneTDEE(profil);
 }
 
+/* ---------- Zweiter Richtwert: bis zum Zielgewicht ----------
+   Ein Kilo Körperfett entspricht grob 7000 kcal. Aus der Lücke zum
+   Zielgewicht und den verbleibenden Tagen ergibt sich, wie viel man
+   täglich unter dem Haltebedarf bleiben muss. Je näher der Termin
+   rückt, desto größer wird das nötige Defizit von allein – die
+   Rechnung geht immer vom *aktuellen* Gewicht aus.                  */
+const KCAL_PRO_KG = 7000;
+
+function tageBis(zielDatumIso){
+  if (!zielDatumIso) return null;
+  const ziel = ausDatumLokal(zielDatumIso);
+  const heute = new Date();
+  heute.setHours(0, 0, 0, 0);
+  ziel.setHours(0, 0, 0, 0);
+  return Math.round((ziel - heute) / 86400000);
+}
+
+/* Gibt null zurück, wenn Zielgewicht oder Termin fehlen.
+   Sonst: { restKg, restTage, defizit, budget, untergrenze, abgefangen, vorbei } */
+function zielRichtwert(profil, aktuellesGewicht){
+  const zielKg = profil.zielGewicht;
+  const haltebedarf = berechneTDEE(profil);
+  const grundumsatz = berechneBMR(profil);
+  if (!zielKg || !profil.zielDatum || !haltebedarf || !aktuellesGewicht) return null;
+
+  const restTage = tageBis(profil.zielDatum);
+  if (restTage === null) return null;
+
+  const restKg = Math.round((aktuellesGewicht - zielKg) * 100) / 100;
+  // Termin verstrichen: nichts mehr zu verteilen
+  if (restTage <= 0){
+    return { restKg, restTage, defizit:0, budget:haltebedarf,
+             untergrenze:grundumsatz, abgefangen:false, vorbei:true };
+  }
+
+  const defizit = Math.round(restKg * KCAL_PRO_KG / restTage);
+  let budget = haltebedarf - defizit;
+
+  // Unter den eigenen Grundumsatz geht die App nicht – dauerhaft darunter
+  // zu essen ist nicht gesund, und die App soll das nicht empfehlen.
+  const abgefangen = budget < grundumsatz;
+  if (abgefangen) budget = grundumsatz;
+
+  return { restKg, restTage, defizit, budget: Math.round(budget),
+           untergrenze: grundumsatz, abgefangen, vorbei:false };
+}
+
 /* Richtwerte für die Makro-Balken: 20 % Eiweiß, 30 % Fett, 50 % KH.
    Eiweiß und Kohlenhydrate haben 4 kcal/g, Fett 9 kcal/g. */
 function makroZiele(ziel){

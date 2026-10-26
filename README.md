@@ -41,6 +41,10 @@ auf deinem Gerät und verlassen es nicht.
   dreht der Ring eine **zweite Runde in Rot** – so groß wie der Überschuss. Beim
   doppelten Tagesziel ist sie voll und der ganze Kreis wird rot.
 - Wer lieber ein eigenes Ziel setzt, überschreibt den berechneten Wert
+- **Zielgewicht mit Termin:** Daraus rechnet die App einen zweiten Richtwert – wie viel
+  du täglich essen darfst, um dein Ziel bis dahin zu erreichen. Beide stehen in der
+  Tagesübersicht nebeneinander. Je näher der Termin rückt, ohne dass das Gewicht fällt,
+  desto enger wird der Richtwert; unter deinen Grundumsatz geht er nie
 
 ### Gut erkennbar
 Grün und Rot unterscheiden sich nicht nur im Farbton, sondern deutlich in der
